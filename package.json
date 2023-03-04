@@ -1,0 +1,50 @@
+{
+	"name": "tasktimer",
+	"version": "0.0.1",
+	"private": true,
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"lint": "prettier --plugin-search-dir . --check . && eslint .",
+		"format": "prettier --plugin-search-dir . --write ."
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-static": "^1.0.0-next.50",
+		"@sveltejs/kit": "^1.0.0",
+		"@types/d3-array": "^3.0.4",
+		"@types/d3-scale": "^4.0.3",
+		"@types/d3-shape": "^3.1.1",
+		"@typescript-eslint/eslint-plugin": "^5.45.0",
+		"@typescript-eslint/parser": "^5.45.0",
+		"eslint": "^8.28.0",
+		"eslint-config-prettier": "^8.5.0",
+		"eslint-plugin-svelte3": "^4.0.0",
+		"internal-ip": "^7.0.0",
+		"prettier": "^2.8.0",
+		"prettier-plugin-svelte": "^2.8.1",
+		"svelte": "^3.54.0",
+		"svelte-check": "^3.0.1",
+		"tslib": "^2.4.1",
+		"typescript": "^4.9.3",
+		"vite": "^4.0.0"
+	},
+	"type": "module",
+	"dependencies": {
+		"@tauri-apps/api": "^2.0.0-alpha.0",
+		"@tauri-apps/cli": "^2.0.0-alpha.1",
+		"@types/hammerjs": "^2.0.41",
+		"d3": "^7.8.2",
+		"hammerjs": "^2.0.8",
+		"rolldate-full": "^3.2.3",
+		"scroll-snap": "^4.0.3",
+		"smooth-scrollbar": "^8.8.1",
+		"svelte-inview": "^3.0.2"
+	},
+	"files.watcherExclude": {
+		"**/.git/objects/**": true,
+		"**/node_modules/**": true
+	}
+}
