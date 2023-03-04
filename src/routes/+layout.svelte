@@ -28,5 +28,7 @@
 
 <link href="/src/assets/css/fonts.css" rel="stylesheet">
 
+<div></div>
+
 <slot/>
 <Menu/>
