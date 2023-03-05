@@ -8,7 +8,15 @@ node_modules
 !.env.example
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
-src-tauri/gen
-src-tauri/target
+src-tauri/gen/android/app/*
+!src-tauri/gen/android/app/app
+src-tauri/gen/android/app/app/*
 !src-tauri/gen/android/app/app/build.gradle.kts
 !src-tauri/gen/android/app/app/src
+src-tauri/gen/android/app/app/src/main/assets
+src-tauri/gen/android/app/app/src/main/jniLibs
+src-tauri/gen/android/app/app/src/main/jniLibs
+src-tauri/gen/android/app/app/src/main/res/*
+!src-tauri/gen/android/app/app/src/main/res/values-night
+!**/.gitignore
+src-tauri/target/*
