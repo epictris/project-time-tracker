@@ -39,7 +39,7 @@ impl AppBuilder {
     eprintln!("\nStarting Application:\n");
     tauri::Builder::default()
       .manage(Database(Mutex::new(create_database_connection())))
-      .invoke_handler(tauri::generate_handler![delete_session, save_session, load_n_sessions, unarchive_project, save_project, archive_project, delete_project, get_archived_projects, complete_session, get_active_projects, create_project, start_session, get_project_sessions_after_date, get_sessions_after_date])
+      .invoke_handler(tauri::generate_handler![delete_session, save_session, load_n_sessions, unarchive_project, save_project, archive_project, delete_project, get_archived_projects, complete_session, get_active_projects, create_project, start_session, get_project_sessions_after_date, get_sessions_after_date, get_sessions_in_range])
       .setup(move |app| {
         #[cfg(target_os = "android")] {
           use tauri::Manager;
@@ -530,6 +530,34 @@ async fn get_sessions_after_date(database: tauri::State<'_, Database>, date : St
   let mut stmt = connection.prepare("SELECT * FROM session WHERE end > ?1 OR end IS NULL")?;
 
   let project_iter = stmt.query_map(params![date], |row| {
+      Ok(Session {
+          id: row.get(0)?,
+          project_id: row.get(1)?,
+          start: row.get(2)?,
+          end: row.get(3).unwrap(),
+          target: row.get(4)?
+      })
+  })?;
+
+  let mut projects = Vec::new();
+  for project in project_iter {
+    projects.push(project?);
+  }
+  
+  Ok(serde_json::to_string(&projects)?)
+}
+
+#[tauri::command]
+async fn get_sessions_in_range(database: tauri::State<'_, Database>, start : String, end : String) -> Result<String, Error> {
+  
+  let mut connection = match database.0.lock() {
+    Err(_) => return Err(Error::ConnectionFailed),
+    Ok(v) => v,
+  };
+
+  let mut stmt = connection.prepare("SELECT * FROM session WHERE (end > ?1 OR end IS NULL) AND start < ?2")?;
+
+  let project_iter = stmt.query_map(params![start, end], |row| {
       Ok(Session {
           id: row.get(0)?,
           project_id: row.get(1)?,

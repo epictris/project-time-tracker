@@ -29,6 +29,13 @@ export function DB_getSessionsAfterDate(date : number) : Promise<any> {
   return invoke('get_sessions_after_date', {date: result});
 }
 
+export function DB_getSessionsInRange(range : any) : Promise<any> {
+  let start = new Date(range.start).toISOString().replace("T", " ").replace("Z", "");
+  let end = new Date(range.end).toISOString().replace("T", " ").replace("Z", "");
+  console.log({start: start, end: end})
+  return invoke('get_sessions_in_range', {start: start, end: end});
+}
+
 export function DB_getProjectSessionsAfterDate(date : number, project_id : number) : Promise<any> {
   let result = new Date(date).toISOString().replace("T", " ").replace("Z", "");
   return invoke('get_project_sessions_after_date', {date: result, projectId: project_id});

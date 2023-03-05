@@ -12,7 +12,7 @@
   import { getDate, getHours, getMinutes, getMonth, getSeconds, getYear, showHours, showMinutes, showSeconds, UTCStringToMillis } from '../../scripts/helpers';
 
 let sessions : any[] = [];
-const SESSIONS_PER_PAGE = 15;
+const SESSIONS_PER_PAGE = 20;
 let hasMore = true;
 
 async function loadSessions(startAt : number) {
