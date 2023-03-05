@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { rangeStart } from "../stores";
 
-
   let now = new Date(Date.now() - 86400000 * 6);
   now.setHours(0, 0, 0, 0);
 
@@ -32,10 +31,6 @@
 </script>
 
 <style>
-
-:global(body) {
-  padding: 10px;
-}
 
   #range {
     display: flex;

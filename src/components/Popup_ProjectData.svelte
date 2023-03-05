@@ -7,12 +7,14 @@
   import { activeProjects } from '../../src/routes/stores';
   import { DB_getActiveProjects } from '../scripts/queries';
   import { DB_createProject } from '../scripts/queries';
-
-let targetWindowOpen = false;
-export let menuState = 3;
+	import PopupSetTarget from "./Popup_SetTarget.svelte";
+  import { createEventDispatcher } from "svelte";
+  
+let targetWindow : any = null;
+let dispatch = createEventDispatcher();
 
 function openTargetWindow() {
-  targetWindowOpen = true;
+  targetWindow = PopupSetTarget
 }
 
 let color : string = "9c6cf0";
@@ -29,9 +31,9 @@ async function createNewProject() {
     DB_getActiveProjects().then((projectsList) => {
       $activeProjects = JSON.parse(projectsList);
     });
+    dispatch("close");
     }
   )
-  menuState = 0;
 }
 
 </script>
@@ -43,6 +45,7 @@ async function createNewProject() {
     display: flex;
     justify-content: center;
     align-items: center;
+    pointer-events: none;
   }
 
   .container:has(input[type="text"]:focus) {
@@ -61,8 +64,7 @@ async function createNewProject() {
 
   #project-name {
     width: 100%;
-    height:55px;
-    line-height: 20pt;
+    line-height: 40px;
     text-align: center;
     font-size: 14pt;
     border-radius: 8px;
@@ -113,8 +115,9 @@ async function createNewProject() {
 
   #time {
     width: 110px;
-    height: 55px;
+    line-height: 40px;
     font-size: 14pt;
+    padding: 0;
     background: #1e1e1e;
     border: 2px solid var(--color);
     border-radius: 8px;
@@ -127,19 +130,16 @@ async function createNewProject() {
   }
 
   #submit {
-    height: 55px;
-    font-family: 'Poppins', sans-serif;
-    width: 100%;
-    padding: 5px;
-    margin: 0 auto;
     margin-top: 15px;
-    line-height: 20pt;
-    background: #fff;
-    color: #1e1e1e;
+    font-family: "poppinsregular";
+    width: 100%;
+    line-height: 40px;
+    padding: 0 10px;
     font-size: 14pt;
-    border: 2px solid #fff;
+    border: 2px solid;
     border-radius: 8px;
     display: block;
+    color: #1e1e1e;
   }
 
   #submit:hover {
@@ -148,7 +148,7 @@ async function createNewProject() {
   }
 </style>
 
-<div in:fade="{{delay:150, duration: 150, easing: cubicInOut}}" out:fade="{{duration: 150, easing: cubicInOut}}" class="container">
+<div in:fade="{{delay:250, duration: 250, easing: cubicInOut}}" out:fade="{{duration: 250, easing: cubicInOut}}" class="container">
   <div class="window">
     <input id="project-name" type="text" placeholder="Project Name" style="--color: {colorDisplay}" bind:value={projectName}>
     <div id="colors">
@@ -194,6 +194,4 @@ async function createNewProject() {
   </div>
 </div>
 
-{#if targetWindowOpen}
-  <Popup_SetTarget bind:windowOpen={targetWindowOpen} bind:targetMinutes={targetMinutes} {targetHoursDisplay} {targetMinutesDisplay}/>
-{/if}
+<svelte:component this={targetWindow} on:close={() => {targetWindow = null}} bind:targetMinutes={targetMinutes} {targetHoursDisplay} {targetMinutesDisplay} />

@@ -14,12 +14,12 @@
 
   const dispatch = createEventDispatcher();
 
-let targetWindowOpen = false;
+let targetWindow : any = null;
 
 export let selectedProject! : Project;
 
 function openTargetWindow() {
-  targetWindowOpen = true;
+  targetWindow = Popup_SetTarget
 }
 
 onMount(() => {
@@ -87,8 +87,7 @@ function archiveProject() {
 
   #project-name {
     width: 100%;
-    height:55px;
-    line-height: 20pt;
+    line-height: 40px;
     text-align: center;
     font-size: 14pt;
     border-radius: 8px;
@@ -123,7 +122,6 @@ function archiveProject() {
   input[name="color"]:checked {
     background: var(--color);
   }
-
   #daily-target {
     --color: #909090;
     display: flex;
@@ -139,8 +137,9 @@ function archiveProject() {
 
   #time {
     width: 110px;
-    height: 55px;
+    line-height: 40px;
     font-size: 14pt;
+    padding: 0;
     background: #1e1e1e;
     border: 2px solid var(--color);
     border-radius: 8px;
@@ -156,19 +155,13 @@ function archiveProject() {
     margin-top: 15px;
     display: flex;
     gap: 10px;
-    height: 55px;
-    align-items: stretch;
-    justify-content: stretch;
   }
 
   #submission > input {
-    height: 100%;
-    flex: 1;
     font-family: "poppinsregular";
     width: 100%;
-    padding: 5px;
-    margin: 0 auto;
-    line-height: 20pt;
+    line-height: 40px;
+    padding: 0 10px;
     font-size: 14pt;
     border: 2px solid;
     border-radius: 8px;
@@ -181,7 +174,7 @@ function archiveProject() {
   }
 </style>
 
-<Overlay on:closeOverlay={() => dispatch("close")}>
+<Overlay on:close={() => {dispatch("close")}}>
   <div in:fade="{{duration: 250, easing: cubicInOut}}" out:fade="{{duration: 150, easing: cubicInOut}}" class="container">
     <div class="window">
       <input id="project-name" type="text" placeholder="Project Name" style="--color: {colorDisplay}" bind:value={projectName}>
@@ -232,7 +225,5 @@ function archiveProject() {
     </div>
   </div>
 
-  {#if targetWindowOpen}
-    <Popup_SetTarget bind:windowOpen={targetWindowOpen} bind:targetMinutes={targetMinutes} {targetHoursDisplay} {targetMinutesDisplay}/>
-  {/if}
+  <svelte:component this={targetWindow} on:close={() => {targetWindow = null}} bind:targetMinutes={targetMinutes} {targetHoursDisplay} {targetMinutesDisplay} />
 </Overlay>

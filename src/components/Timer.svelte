@@ -179,11 +179,11 @@
   function setTimerGap(length : number) {
     switch (length) {
       case 1:
-        return "33%";
+        return "36%";
       case 2:
-        return "12%";
+        return "20%";
       case 3:
-        return "6%";
+        return "9%";
       case 4:
         return "4%";
       case 5:
@@ -214,7 +214,7 @@
 .timer {
   height: 50vh;
   background: #1e1e1e;
-  border-radius:23px 23px 8px 8px;
+  border-radius:8px;
   display: flex;
   flex-direction: row;
   align-items:flex-end;
@@ -260,7 +260,7 @@
 .targetcount {
   line-height: 24px;
   height: 24px;
-  font-family: "poppinssemibold";
+  font-family: "latobold";
   color: #121212;
   margin: 0;
   padding: 0;
@@ -271,6 +271,7 @@
 
 .timercount > span,
 .targetcount > span {
+  font-family: "poppinsmedium";
   font-size: calc(var(--font-size) - 3px);
   margin: 0;
 }

@@ -59,22 +59,17 @@
   color: #fff;
 }
 
-:global(body) {
-  padding: 10px;
-}
-
 .project {
   flex: 1;
   text-align: center;
-  height: 55px;
-  line-height: 45px;
+  line-height: 40px;
   padding: 0;
   font-family: "poppinsregular";
-  font-size: 15pt;
-  border-radius: 8px;
+  font-size: 14pt;
+  border-radius:10px;
   color: var(--color);
   border: 2px solid var(--color);
-  margin: 12px 0;
+  margin: 8px 0;
   background: none;
   transition: all 200ms ease;
 }
@@ -82,50 +77,6 @@
 .active {
   background: var(--color);
   color: #121212;
-  font-family: "poppinssemibold";
-}
-
-#finger {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto;
-  filter: invert(100%);
-  background-image: url("../assets/images/finger.svg");
-  background-size: contain;
-  position: absolute;
-  top: calc(40vh - 40px);
-  left: calc(50% - 40px);
-  animation-name: finger;
-  animation-duration:5s;
-  animation-iteration-count: infinite;
-  
-}
-
-@keyframes finger {
-
-  0%, 55%, 100% {
-    opacity: 0;
-  }
-
-  60%, 95% {
-    opacity: 1;
-  }
-
-  65%, 90% {
-    background-image: url("../assets/images/finger.svg");
-  }
-
-  66%, 89% {
-    background-image: url("../assets/images/finger-tapped.svg");
-  }
-
-  70% {
-    transform:translateY(0);
-  }
-
-  90%, 100% {
-    transform:translateY(20vh);
-  }
 }
 
 </style>

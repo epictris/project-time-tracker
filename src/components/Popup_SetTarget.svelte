@@ -4,9 +4,11 @@
 	import Overlay from "./Overlay.svelte";
   import createScrollSnap from "scroll-snap"
 	import { onMount } from "svelte";
+  import { createEventDispatcher } from "svelte";
+
+  let dispatch = createEventDispatcher();
 
   export let targetMinutes;
-  export let windowOpen;
 
   export let targetHoursDisplay : number;
   export let targetMinutesDisplay : number;
@@ -60,16 +62,13 @@
       return document.elementFromPoint(rect.x + rect.width/2, rect.y + rect.height/2) as HTMLElement
     }
 
-  function handleClose() {
-    windowOpen = false;
-  }
-
   function setTargetTime() {
     let selectedHours = getSelectedElement(hoursElement).dataset.hour
     let selectedMinutes = getSelectedElement(minutesElement).dataset.minute
 
     targetMinutes = Number(selectedHours) * 60 + Number(selectedMinutes);
-    handleClose();
+    console.log("TEST");
+    dispatch("close");
   }
   
 </script>
@@ -162,10 +161,6 @@
     );
   }
 
-  .scrollbar-track {
-    display: none;
-  }
-
   #time > div {
     /* pointer-events: none; */
     width: 50%;
@@ -200,8 +195,8 @@
   }
 </style>
  <!-- svelte-ignore a11y-click-events-have-key-events -->
-<Overlay on:closeOverlay={handleClose}>
-  <div class="container">
+<Overlay on:close={() => dispatch("close")}>
+  <div class="container" in:fade={{duration: 250}} out:fade={{duration: 250}}>
     <div class="window">
       <div id="time" bind:this={timeElement}>
         <div id="hours" bind:this={hoursElement}>
