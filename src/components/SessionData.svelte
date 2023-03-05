@@ -74,6 +74,7 @@ function UTCStringToMillis(UTCString : string | null) {
 </script>
 
 <style>
+
   .container {
     width: 100vw;
     height: 100vh;
@@ -98,7 +99,8 @@ function UTCStringToMillis(UTCString : string | null) {
 
 .session {
   flex: 1;
-  padding: 12px 10px;
+  line-height: 40px;
+  padding: 0 10px;
   font-family: "poppinsregular";
   font-size: 12pt;
   border-radius: 8px;
@@ -127,7 +129,8 @@ function UTCStringToMillis(UTCString : string | null) {
 .time > p {
   flex: 1;
   margin: 0;
-  padding: 12px 10px;
+  line-height: 40px;
+  padding: 0 10px;
 }
 
 .time > button {
@@ -139,26 +142,21 @@ function UTCStringToMillis(UTCString : string | null) {
   border: 2px solid #fff;
   border-radius: 8px;
   font-size: 12pt;
-  padding: 12px 0;
+  line-height: 40px;
+  padding: 0 10px;
 }
 
 #submission {
   margin-top: 15px;
   display: flex;
   gap: 10px;
-  height: 55px;
-  align-items: stretch;
-  justify-content: stretch;
 }
 
-  #submission > input {
-    height: 100%;
-    flex: 1;
+#submission > input {
     font-family: "poppinsregular";
     width: 100%;
-    padding: 5px;
-    margin: 0 auto;
-    line-height: 20pt;
+    line-height: 40px;
+    padding: 0 10px;
     font-size: 14pt;
     border: 2px solid;
     border-radius: 8px;
@@ -171,8 +169,8 @@ function UTCStringToMillis(UTCString : string | null) {
   }
 </style>
 
-<Overlay on:closeOverlay={() => dispatch("close")}>
-  <div in:fade="{{duration: 250, easing: cubicInOut}}" out:fade="{{duration: 150, easing: cubicInOut}}" class="container">
+<Overlay on:close={() => dispatch("close")}>
+  <div in:fade="{{duration: 250, easing: cubicInOut}}" out:fade="{{duration: 250, easing: cubicInOut}}" class="container">
     <div class="window">
       <div class="session" style="--color: #{selectedSession.color}" id="s{selectedSession.id}" data-id={selectedSession.id}>
         <div class="name">

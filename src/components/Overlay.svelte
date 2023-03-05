@@ -48,66 +48,16 @@
     pointer-events: all;
   }
 
-  #overlay-content {
+  #content-container {
     position: relative;
     pointer-events: none;
   }
 </style>
 
-
-<!-- svelte-ignore a11y-click-events-have-key-events -->
-{#if customOpen}
-  <div id="container" out:fade="{{duration: 250, easing: cubicInOut}}" style="opacity: {opacity}" bind:this={container}>
-    <div id="background" 
-      on:touchstart={(e)=>{
-        e.preventDefault(); 
-        draggingBackground = false;
-        touchLocation = {x: e.touches[0].clientX, y:e.touches[0].clientY}
-      }} 
-      on:touchmove={(e)=>{
-        e.preventDefault(); 
-        if(draggingBackground) return;
-        let d = distance(e.touches[0].clientX, e.touches[0].clientY, touchLocation.x, touchLocation.y);
-        if(d > dragBuffer) {
-          draggingBackground = true;
-      }}} 
-      on:touchend={()=>{
-          if(draggingBackground) return;
-          closing = true
-          dispatch('closeOverlay');
-      }} 
-      bind:this={background}>
-    </div>    
-    <div id="overlay-content">
-      <slot />
-    </div>
+<div id="container">
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <div id="background" in:fade="{{duration: 250, easing: cubicInOut}}"  out:fade="{{duration: 250, easing: cubicInOut}}" on:click={() => {dispatch("close")}}/>
+  <div id="content-container">
+    <slot/>
   </div>
-{:else}
-  <div id="container" out:fade="{{duration: 250, easing: cubicInOut}}" in:fade="{{duration: 250, easing: cubicInOut}}" bind:this={container}>
-    <div id="background" on:touchmove|preventDefault
-      on:touchstart={(e)=>{
-        e.preventDefault();
-        if(closing) return;
-        draggingBackground = false;
-        touchLocation = {x: e.touches[0].clientX, y:e.touches[0].clientY}
-      }} 
-      on:touchmove={(e)=>{
-        e.preventDefault(); 
-        if(draggingBackground || closing) return;
-        let d = distance(e.touches[0].clientX, e.touches[0].clientY, touchLocation.x, touchLocation.y);
-        if(d > dragBuffer) {
-          draggingBackground = true;
-      }}} 
-      on:touchend={(e)=>{
-          e.preventDefault()
-          if(draggingBackground || closing) return;
-          closing = true
-          dispatch('closeOverlay');
-      }} 
-      bind:this={background}>
-    </div>
-    <div id="overlay-content">
-      <slot />
-    </div>
-  </div>
-{/if}
+</div>

@@ -32,7 +32,7 @@
   function unarchiveProject() {
     DB_unarchiveProject(selectedProject.id)
     .then(() => {
-      dispatch("showArchived");
+      dispatch("refreshData");
       dispatch("close");
     })
   }
@@ -64,9 +64,8 @@
 
   #project-name {
     width: 100%;
-    height:55px;
     vertical-align: middle;
-    line-height: 46px;
+    line-height: 40px;
     text-align: center;
     font-size: 14pt;
     border-radius: 8px;
@@ -80,7 +79,6 @@
     margin-top: 15px;
     display: flex;
     gap: 10px;
-    height: 55px;
     align-items: stretch;
     justify-content: stretch;
   }
@@ -90,9 +88,8 @@
     flex: 1;
     font-family: "poppinsregular";
     width: 100%;
-    padding: 5px;
     margin: 0 auto;
-    line-height: 20pt;
+    line-height: 40px;
     font-size: 14pt;
     border: 2px solid;
     border-radius: 8px;
@@ -105,8 +102,8 @@
   }
 </style>
 
-<Overlay on:closeOverlay={() => dispatch("close")}>
-  <div in:fade="{{duration: 250, easing: cubicInOut}}" out:fade="{{duration: 150, easing: cubicInOut}}" class="container">
+<Overlay on:close={() => dispatch("close")}>
+  <div in:fade="{{duration: 250, easing: cubicInOut}}" out:fade="{{duration: 250, easing: cubicInOut}}" class="container">
     <div class="window">
       <div id="project-name" style="--color: #{selectedProject.color}">{selectedProject.name}</div>
       <div id="submission">

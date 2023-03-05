@@ -260,8 +260,8 @@ function UTCStringToMillis(UTCString : string | null) {
   }
 </style>
  <!-- svelte-ignore a11y-click-events-have-key-events -->
-<Overlay on:closeOverlay={() => {; dispatch("close")}}>
-  <div class="container">
+<Overlay on:close={() => {; dispatch("close")}}>
+  <div class="container" in:fade={{duration: 250}} out:fade={{duration: 250}}>
     <div class="window">
       <div id="time">
         <div id="hours" bind:this={hoursContainer}>

@@ -18,7 +18,7 @@ export type Project = {
 export type ProjectSession = {
   id:         number
   start:      string
-  end:        string | null
+  end:        string
   target:     number
   name:       string
   color:      string

@@ -11,7 +11,7 @@
   
 let projects : Project[] = [];
 
-DB_getActiveProjects().then((data) => {
+DB_getArchivedProjects().then((data) => {
   projects = JSON.parse(data);
 });
 
@@ -20,20 +20,10 @@ let archived : HTMLElement;
 let popupWindow : any;
 let selectedProject : Project | undefined;
 
-async function showActive() {
+async function showProjects() {
   if (active && archived) {
     active.classList.add("selected")
     archived.classList.remove("selected");
-  }
-  await DB_getActiveProjects().then((data) => {
-    projects = JSON.parse(data);
-  });
-}
-
-async function showArchived() {
-  if (active && archived) {
-    archived.classList.add("selected")
-    active.classList.remove("selected");
   }
   await DB_getArchivedProjects().then((data) => {
     projects = JSON.parse(data);
@@ -58,7 +48,7 @@ function handleProjectClick(target : EventTarget  | null) {
 
 function confirmDeletion() {
   popupWindow = null;
-  showArchived();
+  showProjects();
 }
 
 </script>
@@ -99,6 +89,7 @@ function confirmDeletion() {
   color: #EECB43;
   pointer-events: none;
   line-height: 40px;
+  pointer-events: none;
 }
 
 .number {
@@ -127,18 +118,18 @@ function confirmDeletion() {
   <div class="project" style="--color: #{project.color}" id="p{project.id}" data-id={project.id} on:click={(e) => {handleProjectClick(e.target)}}>
     {project.name}
     {#if project.target > 0}
-    <div class="target">
+    <span class="target">
       {#if showHours(project.target * 60000)}
         <span class="number">{getHours(project.target * 60000)}</span><span class="unit">h</span>
       {/if}
       {#if getMinutes(project.target * 60000) > 0}
         <span class="number">{getMinutes(project.target * 60000)}</span><span class="unit">m</span>
       {/if}
-    </div>
+    </span>
     {:else}
       <span class="empty">None</span>
     {/if}
   </div>
 {/each}
 
-<svelte:component this={popupWindow} {selectedProject} on:showArchived={showArchived} on:showActive={showActive} on:close={ () => {popupWindow = null}} on:deleted={confirmDeletion}/>
+<svelte:component this={popupWindow} {selectedProject} on:refreshData={showProjects} on:close={ () => {popupWindow = null}} on:deleted={confirmDeletion}/>
