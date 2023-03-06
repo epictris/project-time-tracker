@@ -11,6 +11,7 @@ import android.webkit.*
 import android.content.Context
 import android.os.Build
 import kotlin.collections.Map
+import android.view.View
 
 class RustWebView(context: Context): WebView(context) {
     init {
@@ -20,6 +21,8 @@ class RustWebView(context: Context): WebView(context) {
         settings.databaseEnabled = true
         settings.mediaPlaybackRequiresUserGesture = false
         settings.javaScriptCanOpenWindowsAutomatically = true
+        this.overScrollMode = View.OVER_SCROLL_NEVER
+        this.setVerticalScrollBarEnabled(false);
         
     }
 
