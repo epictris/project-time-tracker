@@ -6,3 +6,5 @@ export let activeProjects = writable<Project[]>();
 export let canOpenMenu = writable<Boolean>();
 
 export let range = writable<any>();
+
+export let data = writable<any[]>();

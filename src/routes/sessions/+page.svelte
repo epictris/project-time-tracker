@@ -98,14 +98,14 @@ function renderDate(date : any) {
   pointer-events: none;
   flex: 1;
   text-align: right;
-  color: #a9a9a9;
+  color: #d3d3d3;
 }
 
 .date {
   pointer-events: none;
   flex: 1;
   text-align: right;
-  color: #a9a9a9;
+  color: #d3d3d3;
   font-size: 10pt;
 }
 

@@ -32,7 +32,6 @@ export function DB_getSessionsAfterDate(date : number) : Promise<any> {
 export function DB_getSessionsInRange(range : any) : Promise<any> {
   let start = new Date(range.start).toISOString().replace("T", " ").replace("Z", "");
   let end = new Date(range.end).toISOString().replace("T", " ").replace("Z", "");
-  console.log({start: start, end: end})
   return invoke('get_sessions_in_range', {start: start, end: end});
 }
 
@@ -75,4 +74,12 @@ export function DB_deleteSession(id: number) {
 
 export function DB_saveSession(id: number, start: string, end: string | null) {
   return invoke('save_session', {id: id, start: start, end: end})
+}
+
+export function DB_hideProject(id: number) {
+  return invoke('hide_project', {id: id})
+}
+
+export function DB_showProject(id: number) {
+  return invoke('show_project', {id: id})
 }

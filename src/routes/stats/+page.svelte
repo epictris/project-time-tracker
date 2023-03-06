@@ -1,53 +1,109 @@
 <script lang="ts">
-	import type { Session } from "../../scripts/objects";
-	import { DB_getActiveProjects, DB_getSessionsAfterDate, DB_getSessionsInRange } from "../../scripts/queries";
+	import Graph from "../../components/Graph.svelte";
+	import { getHours, getMinutes, getSeconds, showHours, showMinutes, showSeconds } from "../../scripts/helpers";
+	import { DB_getActiveProjects, DB_getSessionsAfterDate, DB_getSessionsInRange, DB_hideProject, DB_showProject } from "../../scripts/queries";
+  import { data } from "../stores";
 
-  let projects : any = [];
   let range = {}
+  let projectData : any = [];
 
   viewWeek();
 
-  $: data = refreshData(range);
+  $: refreshData(range);
 
-  function refreshData(range : any) {
+  function refreshData(range : any) : any {
     return Promise.all([DB_getActiveProjects(), DB_getSessionsInRange(range)]).then((data) => {
-      projects = JSON.parse(data[0]);
+      let projects = JSON.parse(data[0]);
       let sessions = JSON.parse(data[1]);
+      let projectDataMap : any = {}
 
+      for(let project of projects) {
+        projectDataMap[project.id] = {id: project.id, name: project.name, color: project.color, visible: project.visible, data: {}}
+      }
 
-      console.log(sessions);
+      for(let session of sessions) {
+        // ignore if session is for archived project.
+        if(!projectDataMap[session.project_id]) {continue}
+
+        let sessionStart = new Date(session.start! + " UTC")
+        let sessionEnd;
+        if(session.end) {
+          sessionEnd = new Date(session.end! + " UTC")
+        } else {
+          sessionEnd = new Date(Date.now());
+        }
+        // Ignore time outside of specified range
+        if (sessionStart.getTime() < range.start) { sessionStart = new Date(range.start) }
+
+        // When the start and end of the session occur on the same date (simple case)
+        if(sessionStart.toDateString() == sessionEnd.toDateString()) {
+          let date = sessionStart.toDateString();
+          let duration = sessionEnd.getTime() - sessionStart.getTime();
+          projectDataMap[session.project_id].data[date] = projectDataMap[session.project_id].data[date]? projectDataMap[session.project_id].data[date] + duration : 0 + duration;
+          continue;
+        }
+        
+        // Calculate the number of days the session occurs across
+        let numberOfDays = 1 + (new Date(sessionEnd.toDateString()).getTime() - new Date(sessionStart.toDateString()).getTime()) / 86400000
+        for(let day = 0; day < numberOfDays; day++) {
+          let date;
+          let duration;
+          if(day == 0) {
+            date = sessionStart.toDateString();
+            let endOfDay = new Date(date).setHours(24, 0, 0, 0)
+            duration = (sessionEnd.getTime() < endOfDay ? sessionEnd.getTime() : endOfDay) - sessionStart.getTime();
+          } else if (day == numberOfDays - 1) {
+            date = sessionEnd.toDateString();
+            duration = sessionEnd.getTime() - new Date(date).setHours(0, 0, 0, 0);
+          } else {
+            date = new Date(new Date(sessionStart.toDateString()).getTime() + day * 86400000).toDateString();
+            duration = 86400000
+          }
+          projectDataMap[session.project_id].data[date] = projectDataMap[session.project_id].data[date]? projectDataMap[session.project_id].data[date] + duration : 0 + duration;
+        }
+      }
+
+      // Loop through all projects
+      const daysInRange = 1 + Math.floor((range.end - range.start) / 86400000)
+
+      let tempData : any = []
+      for(const key of Object.keys(projectDataMap)) {
+
+      // populate data for all dates in range
+        let tempDays = []
+        for(let day = 0; day < daysInRange; day++) {
+          let date = new Date(range.start + day * 86400000);
+          tempDays[day] = { date: day, dateString: formatDate(date), duration: projectDataMap[key].data[date.toDateString()] | 0 }
+        }
+        projectDataMap[key].data = tempDays;
+
+        let total = calculateTotal(tempDays)
+        let average = total / tempDays.length
+
+        projectDataMap[key].total = total;
+        projectDataMap[key].average = average;
+
+        tempData.push(projectDataMap[key])
+      }
+      $data = tempData;
     })
   }
 
-  // function refreshPageData(range : any) {
-  //   return Promise.all([DB_getActiveProjects(), DB_getSessionsAfterDate($rangeStart)]).then((result : any) => {
-    
-  //   let projects = JSON.parse(result[0]);
-  //   let sessions = JSON.parse(result[1]);
+    function formatDate(date : Date) {
+    let segments = date.toDateString().split(" ");
+    let day = segments[2]
+    let month = segments[1]
+    let year = segments[3].slice(-2)
+    return day + " " + month + " " + year
+  }
 
-  //   let temporaryList = []
-
-  //   for (let project of projects) {
-  //     let projectEntry = {id: project.id, name: project.name, color: project.color, duration: 0}
-  //     for(let session of sessions) {
-  //         console.log(session)
-  //       if(project.id == session.project_id) {
-  //         if (!session.end) continue;
-  //           projectEntry.duration += calculateSessionTime(session)
-  //         }
-  //       }
-  //     temporaryList.push(projectEntry);
-  //     }
-  //   projectsList = temporaryList;
-  //   })
-  // }
-
-  // function calculateSessionTime(session : Session) {
-  //     let start = new Date(session.start).getTime();
-  //     let end = new Date(session.end!).getTime();
-
-  //     return end - (start > $rangeStart ? start : $rangeStart);
-  //   }
+  function calculateTotal(data : any) {
+    let total = 0;
+    for(let day of data) {
+      total += day.duration;
+    }
+    return total;
+  }
 
     function viewWeek() {
       let start = new Date(Date.now() - 1000 * 60 * 60 * 24 * 6)
@@ -56,7 +112,7 @@
     }
 
     function viewMonth() {
-      let start = new Date(Date.now() - 1000 * 60 * 60 * 24 * 30)
+      let start = new Date(Date.now() - 1000 * 60 * 60 * 24 * 30) // 30
       start.setHours(0, 0, 0, 0)
       range = {start: start.getTime(), end: Date.now()}
     }
@@ -68,6 +124,7 @@
     }
 
     function viewCustom() {
+
     }
 
     function setButtonActive(e : MouseEvent) {
@@ -77,39 +134,12 @@
       (e.target! as HTMLElement).classList.add("selected")
     }
 
-    function showHours(duration : number) {
-      let hours = Math.floor(duration / 3600000)
-      if(hours > 0) return true
-      return false
-    }
-
-    function showMinutes(duration : number) {
-      let hours = Math.floor(duration / 3600000)
-      let minutes = Math.floor((duration / 60000) % 60)
-      if(hours >= 10) return false
-      if(minutes > 0) return true;
-      return false;
-    }
-
-    function showSeconds(duration : number) {
-      let hours = Math.floor(duration / 3600000)
-      let minutes = Math.floor((duration / 60000) % 60)
-      let seconds = Math.floor((duration / 1000) % 60)
-      if (hours > 0 || minutes > 10) return false;
-      if (seconds > 0) return true;
-      return false;
-    }
-
-    function getHours(duration : number) {
-      return Math.floor(duration / 3600000)
-    }
-
-    function getMinutes(duration : number) {
-      return Math.floor((duration / 60000) % 60)
-    }
-
-    function getSeconds(duration : number) {
-      return Math.floor((duration / 1000) % 60)
+    function toggleProjectVisibility(id : number, visible: boolean) {
+      if(visible) {
+        DB_hideProject(id).then(refreshData(range))
+      } else {
+        DB_showProject(id).then(refreshData(range))
+      }
     }
 
 </script>
@@ -118,7 +148,7 @@
 
   #select-range {
     display: flex;
-    padding: 10px;
+    padding: 12px 0px 5px 0px;
     gap: 5px;
   }
 
@@ -126,7 +156,7 @@
     flex: 1;
     font-family: "poppinsregular";
     font-size: 12pt;
-    line-height: 20pt;
+    line-height: 24pt;
     border-radius: 20px;
     background: #1e1e1e;
     border: none;
@@ -140,33 +170,80 @@
   }
 
   .project {
+    line-height: 40px;
+    padding: 0px 15px;
     font-family: "poppinsregular";
     font-size: 12pt;
-    background-color: #1e1e1e;
+    border-radius:10px;
     color: var(--color);
-    line-height: 45px;
-    padding: 0px 15px;
-    border-radius: 8px;
-    margin-top: 8px;
-    box-shadow: 1px 1px 3px #000;
+    margin: 6px 0;
+    background: none;
+    transition: all 150ms ease;
     display: flex;
     justify-content: space-between;
-    text-decoration: none;
-    -webkit-tap-highlight-color: transparent; /* for removing the highlight */
+    background: #1e1e1e;
+    box-shadow: 1px 1px 3px #000;
   }
 
-  .duration {
-    font-size: 15px;
-    font-family: "poppinssemibold";
+  .project p {
+    padding: 0;
+    margin: 0;
   }
 
-  .duration > span {
-    font-size: 12px;
+  #data-labels {
+  padding: 0 15px;
+  display: flex;
+  color: #A9A9A9;
+  font-size: 8pt;
+  justify-content: space-between;
+  font-family: "poppinsregular"
+  }
+
+  #label-name {
+    flex: 5;
+  }
+
+  #label-average {
+    flex: 3;
+    text-align: right;
+  }
+
+  #label-total {
+    flex: 2;
+    text-align: right;
+  }
+
+  .name {
+    flex: 5;
+  }
+
+  .average {
+    flex: 3;
+    text-align: right;
+    color: var(--color);
+    transition: all 150ms ease;
+  }
+
+  .total {
+    flex: 2;
+    text-align: right;
+    color: var(--color);
+    transition: all 150ms ease;
   }
   
+  .number {
+  font-family: "latoregular";
+  line-height: 0px;
+}
+
+.unit {
+  font-size: 8pt;
+  line-height: 0px;
+}
+
 </style>
 
-<!-- <Chart {data}/> -->
+<Graph {range}/>
 
 <div id="select-range">
   <button on:click={(e) => {viewWeek(); setButtonActive(e)}} class="range selected">
@@ -179,23 +256,44 @@
     Year
   </button>
   <button on:click={(e) => {viewCustom(); setButtonActive(e)}} class="range">
-    Custom
+    All
   </button>
 </div>
 
-{#each projects as project}
-  <a href="reports/single?id={project.id}&color={project.color}&name={project.name}" style="--color: #{project.color}"class="project">
-    <span>{project.name}</span>
-    <span class="duration">
-      {#if showHours(project.duration)}
-        {getHours(project.duration)}<span>h</span>
+<div id="data-labels">
+  <p id="label-name">Project</p>
+  <p id="label-average">Daily Average</p>
+  <p id="label-total">Total</p>
+</div>
+
+{#each $data as project}
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <div class="project" style="--color: #{project.visible ? project.color : 121212}" on:click={() => toggleProjectVisibility(project.id, project.visible)}>
+    <p class="name">
+      {project.name}
+    </p>
+    <p class="average" style="--color: #{project.visible ? "d3d3d3" : 121212}">
+      {#if showHours(project.average)}
+        <span class="number">{getHours(project.average)}</span><span class="unit">h</span>
       {/if}
-      {#if showMinutes(project.duration)}
-        {getMinutes(project.duration)}<span>m</span>
+      {#if showMinutes(project.average)}
+      <span class="number">{getMinutes(project.average)}</span><span class="unit">m</span>
       {/if}
-      {#if showSeconds(project.duration)}
-        {getSeconds(project.duration)}<span>s</span>
+      {#if showSeconds(project.average)}
+      <span class="number">{getSeconds(project.average)}</span><span class="unit">s</span>
       {/if}
-    </span>
-  </a>
+    </p>
+    <p class="total" style="--color: #{project.visible ? "d3d3d3" : 121212}">
+      {#if showHours(project.total)}
+      <span class="number">{getHours(project.total)}</span><span class="unit">h</span>
+      {/if}
+      {#if showMinutes(project.total)}
+      <span class="number">{getMinutes(project.total)}</span><span class="unit">m</span>
+      {/if}
+      {#if showSeconds(project.total)}
+      <span class="number">{getSeconds(project.total)}</span><span class="unit">s</span>
+      {/if}
+
+    </p>
+  </div>
 {/each}

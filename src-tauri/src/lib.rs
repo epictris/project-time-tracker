@@ -39,7 +39,7 @@ impl AppBuilder {
     eprintln!("\nStarting Application:\n");
     tauri::Builder::default()
       .manage(Database(Mutex::new(create_database_connection())))
-      .invoke_handler(tauri::generate_handler![delete_session, save_session, load_n_sessions, unarchive_project, save_project, archive_project, delete_project, get_archived_projects, complete_session, get_active_projects, create_project, start_session, get_project_sessions_after_date, get_sessions_after_date, get_sessions_in_range])
+      .invoke_handler(tauri::generate_handler![show_project, hide_project, delete_session, save_session, load_n_sessions, unarchive_project, save_project, archive_project, delete_project, get_archived_projects, complete_session, get_active_projects, create_project, start_session, get_project_sessions_after_date, get_sessions_after_date, get_sessions_in_range])
       .setup(move |app| {
         #[cfg(target_os = "android")] {
           use tauri::Manager;
@@ -100,7 +100,8 @@ struct Project {
   color:      String,
   target:     i32,
   archived:   i32,
-  active:     i32
+  active:     i32,
+  visible:    i32
 }
 
 #[derive(Serialize, Deserialize)]
@@ -148,13 +149,12 @@ fn create_database_connection() -> Connection {
                 color         TEXT      NOT NULL,
                 target        INTEGER   NOT NULL,
                 archived      BOOLEAN   DEFAULT FALSE   NOT NULL,
-                active        BOOLEAN   DEFAULT FALSE   NOT NULL
+                active        BOOLEAN   DEFAULT FALSE   NOT NULL,
+                visible       BOOLEAN   DEFAULT TRUE    NOT NULL
                 )",
       params![],
   ).unwrap();
-
-  eprintln!("created projects");
-
+  
   connection.execute(
     "CREATE TABLE IF NOT EXISTS session (
               id              INTEGER   PRIMARY KEY,
@@ -215,7 +215,8 @@ async fn get_active_projects(database: tauri::State<'_, Database>) -> Result<Str
           color: row.get(2)?,
           target: row.get(3)?,
           archived: row.get(4)?,
-          active: row.get(5)?
+          active: row.get(5)?,
+          visible: row.get(6)?
       })
   })?;
 
@@ -243,7 +244,8 @@ async fn get_archived_projects(database: tauri::State<'_, Database>) -> Result<S
           color: row.get(2)?,
           target: row.get(3)?,
           archived: row.get(4)?,
-          active: row.get(5)?
+          active: row.get(5)?,
+          visible: row.get(6)?
       })
   })?;
 
@@ -381,6 +383,54 @@ async fn unarchive_project(database: tauri::State<'_, Database>, project_id: i32
     WHERE
       id = ?1",
     params![project_id],
+  )?;
+
+  transaction.commit()?;
+
+  Ok("Success".into())
+}
+
+#[tauri::command]
+async fn hide_project(database: tauri::State<'_, Database>, id: i32) -> Result<String, Error> {
+
+  let mut connection = match database.0.lock() {
+    Err(_) => return Err(Error::ConnectionFailed),
+    Ok(v) => v,
+  };
+
+  let mut transaction = connection.transaction()?;
+
+  transaction.execute(
+    "UPDATE project
+    SET
+      visible = 0
+    WHERE
+      id = ?1",
+    params![id],
+  )?;
+
+  transaction.commit()?;
+
+  Ok("Success".into())
+}
+
+#[tauri::command]
+async fn show_project(database: tauri::State<'_, Database>, id: i32) -> Result<String, Error> {
+
+  let mut connection = match database.0.lock() {
+    Err(_) => return Err(Error::ConnectionFailed),
+    Ok(v) => v,
+  };
+
+  let mut transaction = connection.transaction()?;
+
+  transaction.execute(
+    "UPDATE project
+    SET
+      visible = 1
+    WHERE
+      id = ?1",
+    params![id],
   )?;
 
   transaction.commit()?;
