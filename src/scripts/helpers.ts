@@ -5,11 +5,19 @@ export function showHours(millis : number) : boolean {
 }
 
 export function showMinutes(millis : number) : boolean {
-  return getMinutes(millis) > 0 && millis < 60 * 60 * 10 * 1000;
+  let hours = getHours(millis)
+  let minutes = Math.floor((millis / 60000) % 60)
+  if(hours >= 10) return false
+  return minutes > 0;
 }
 
 export function showSeconds(millis : number) : boolean {
-  return millis < 10 * 60 * 1000 && (getSeconds(millis) > 0 || (millis < 1000 && millis > 0));
+  let hours = getHours(millis)
+  let minutes = getMinutes(millis)
+  let seconds = Math.floor((millis / 1000) % 60)
+  if (hours > 0 || minutes > 10) return false;
+  return seconds > 0;
+
 }
 
 export function getHours(millis : number) : number {

@@ -12,7 +12,7 @@
   import { getDate, getHours, getMinutes, getMonth, getSeconds, getYear, showHours, showMinutes, showSeconds, UTCStringToMillis } from '../../scripts/helpers';
 
 let sessions : any[] = [];
-const SESSIONS_PER_PAGE = 15;
+const SESSIONS_PER_PAGE = 20;
 let hasMore = true;
 
 async function loadSessions(startAt : number) {
@@ -98,14 +98,14 @@ function renderDate(date : any) {
   pointer-events: none;
   flex: 1;
   text-align: right;
-  color: #a9a9a9;
+  color: #d3d3d3;
 }
 
 .date {
   pointer-events: none;
   flex: 1;
   text-align: right;
-  color: #a9a9a9;
+  color: #d3d3d3;
   font-size: 10pt;
 }
 

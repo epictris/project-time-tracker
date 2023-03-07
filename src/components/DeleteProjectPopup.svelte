@@ -48,16 +48,15 @@
   .message {
     color: #fff;
     line-height: 19pt;
-    font-size: 14pt;
+    font-size: 12pt;
     text-align: center;
     margin: 0;
   }
 
   #submission {
-    margin-top: 15px;
+    margin-top: 8px;
     display: flex;
     gap: 10px;
-    height: 55px;
     align-items: stretch;
     justify-content: stretch;
   }
@@ -67,9 +66,8 @@
     flex: 1;
     font-family: "poppinsregular";
     width: 100%;
-    padding: 5px;
     margin: 0 auto;
-    line-height: 20pt;
+    line-height: 40px;
     font-size: 14pt;
     border: 2px solid;
     border-radius: 8px;
@@ -82,7 +80,7 @@
   }
 </style>
 
-<Overlay on:closeOverlay={() => dispatch("close")}>
+<Overlay on:close={() => dispatch("close")}>
   <div in:fade="{{duration: 250, easing: cubicInOut}}" out:fade="{{duration: 150, easing: cubicInOut}}" class="container">
     <div class="window">
       <p class="message">

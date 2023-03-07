@@ -59,7 +59,11 @@
 
     // Calculate pixel height of each timer
     for (let timer of timers) {
-      timer.pixelHeight = minTimerHeight + calculateDisplayHeight(longestDuration, containerHeight, timer.dailySessionTotal);
+      if(timer.dailySessionTotal > 0) {
+        timer.pixelHeight = minTimerHeight + calculateDisplayHeight(longestDuration, containerHeight, timer.dailySessionTotal);
+      } else {
+        timer.pixelHeight = 0;
+      }
       timer.targetPixelHeight = minTimerHeight + calculateTargetHeight(longestDuration, containerHeight, timer.target)
     }
 
@@ -97,7 +101,13 @@
       renderedTimers[timerIndex].pixelHeight = minTimerHeight + calculateDisplayHeight(longestDuration, containerHeight, newDailySessionTotal);
       for(let index = 0; index < renderedTimers.length; index++) {
         if(renderedTimers[index].target > 0) {renderedTimers[index].targetPixelHeight = minTimerHeight + calculateTargetHeight(longestDuration, containerHeight, renderedTimers[index].target)}
-        if(index != timerIndex) {renderedTimers[index].pixelHeight = minTimerHeight + calculateDisplayHeight(longestDuration, containerHeight, renderedTimers[index].dailySessionTotal)} 
+        if(index != timerIndex) {
+          if(renderedTimers[index].dailySessionTotal > 0) {
+            renderedTimers[index].pixelHeight = minTimerHeight + calculateDisplayHeight(longestDuration, containerHeight, renderedTimers[index].dailySessionTotal)
+          } else {
+            renderedTimers[index].pixelHeight = 0;
+          }
+        } 
       }
     }, 16);
   }

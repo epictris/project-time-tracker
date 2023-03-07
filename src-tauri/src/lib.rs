@@ -36,16 +36,14 @@ impl AppBuilder {
 
   pub fn run(self) {
     let setup = self.setup;
-    eprintln!("\nStarting Application:\n");
     tauri::Builder::default()
       .manage(Database(Mutex::new(create_database_connection())))
-      .invoke_handler(tauri::generate_handler![delete_session, save_session, load_n_sessions, unarchive_project, save_project, archive_project, delete_project, get_archived_projects, complete_session, get_active_projects, create_project, start_session, get_project_sessions_after_date, get_sessions_after_date])
+      .invoke_handler(tauri::generate_handler![get_all_active_visible_sessions, show_project, hide_project, delete_session, save_session, load_n_sessions, unarchive_project, save_project, archive_project, delete_project, get_archived_projects, complete_session, get_active_projects, create_project, start_session, get_project_sessions_after_date, get_sessions_after_date, get_sessions_in_range])
       .setup(move |app| {
         #[cfg(target_os = "android")] {
           use tauri::Manager;
           let main_window = app.get_window("main").unwrap();
           main_window.with_webview(|webview| {
-              eprintln!("\nWebview:\n\n");
               use jni::objects::JValue;
               webview.jni_handle().exec(|env, _, webview| {
                 env.call_method(webview, "setBackgroundColor", "(I)V", &[tauri::wry::application::platform::android::ndk_glue::jni::objects::JValue::Int(0)]).unwrap();
@@ -100,7 +98,8 @@ struct Project {
   color:      String,
   target:     i32,
   archived:   i32,
-  active:     i32
+  active:     i32,
+  visible:    i32
 }
 
 #[derive(Serialize, Deserialize)]
@@ -148,13 +147,12 @@ fn create_database_connection() -> Connection {
                 color         TEXT      NOT NULL,
                 target        INTEGER   NOT NULL,
                 archived      BOOLEAN   DEFAULT FALSE   NOT NULL,
-                active        BOOLEAN   DEFAULT FALSE   NOT NULL
+                active        BOOLEAN   DEFAULT FALSE   NOT NULL,
+                visible       BOOLEAN   DEFAULT TRUE    NOT NULL
                 )",
       params![],
   ).unwrap();
-
-  eprintln!("created projects");
-
+  
   connection.execute(
     "CREATE TABLE IF NOT EXISTS session (
               id              INTEGER   PRIMARY KEY,
@@ -215,7 +213,8 @@ async fn get_active_projects(database: tauri::State<'_, Database>) -> Result<Str
           color: row.get(2)?,
           target: row.get(3)?,
           archived: row.get(4)?,
-          active: row.get(5)?
+          active: row.get(5)?,
+          visible: row.get(6)?
       })
   })?;
 
@@ -243,7 +242,8 @@ async fn get_archived_projects(database: tauri::State<'_, Database>) -> Result<S
           color: row.get(2)?,
           target: row.get(3)?,
           archived: row.get(4)?,
-          active: row.get(5)?
+          active: row.get(5)?,
+          visible: row.get(6)?
       })
   })?;
 
@@ -389,6 +389,54 @@ async fn unarchive_project(database: tauri::State<'_, Database>, project_id: i32
 }
 
 #[tauri::command]
+async fn hide_project(database: tauri::State<'_, Database>, id: i32) -> Result<String, Error> {
+
+  let mut connection = match database.0.lock() {
+    Err(_) => return Err(Error::ConnectionFailed),
+    Ok(v) => v,
+  };
+
+  let mut transaction = connection.transaction()?;
+
+  transaction.execute(
+    "UPDATE project
+    SET
+      visible = 0
+    WHERE
+      id = ?1",
+    params![id],
+  )?;
+
+  transaction.commit()?;
+
+  Ok("Success".into())
+}
+
+#[tauri::command]
+async fn show_project(database: tauri::State<'_, Database>, id: i32) -> Result<String, Error> {
+
+  let mut connection = match database.0.lock() {
+    Err(_) => return Err(Error::ConnectionFailed),
+    Ok(v) => v,
+  };
+
+  let mut transaction = connection.transaction()?;
+
+  transaction.execute(
+    "UPDATE project
+    SET
+      visible = 1
+    WHERE
+      id = ?1",
+    params![id],
+  )?;
+
+  transaction.commit()?;
+
+  Ok("Success".into())
+}
+
+#[tauri::command]
 async fn delete_project(database: tauri::State<'_, Database>, project_id: i32) -> Result<String, Error> {
 
   let mut connection = match database.0.lock() {
@@ -441,7 +489,6 @@ async fn delete_session(database: tauri::State<'_, Database>, id: i32) -> Result
 
 #[tauri::command]
 async fn start_session(database: tauri::State<'_, Database>, project_id: i32, target: i32) -> Result<String, Error> {
-  println!("starting session");
 
   let mut connection = match database.0.lock() {
     Err(_) => return Err(Error::ConnectionFailed),
@@ -485,7 +532,6 @@ async fn start_session(database: tauri::State<'_, Database>, project_id: i32, ta
 
 #[tauri::command]
 async fn complete_session(database: tauri::State<'_, Database>) -> Result<String, Error> {
-  println!("completing session: ");
 
   let mut connection = match database.0.lock() {
     Err(_) => return Err(Error::ConnectionFailed),
@@ -520,8 +566,6 @@ async fn complete_session(database: tauri::State<'_, Database>) -> Result<String
 #[tauri::command]
 async fn get_sessions_after_date(database: tauri::State<'_, Database>, date : String) -> Result<String, Error> {
   
-  println!("getting sessions");
-  
   let mut connection = match database.0.lock() {
     Err(_) => return Err(Error::ConnectionFailed),
     Ok(v) => v,
@@ -548,9 +592,95 @@ async fn get_sessions_after_date(database: tauri::State<'_, Database>, date : St
 }
 
 #[tauri::command]
-async fn get_project_sessions_after_date(database: tauri::State<'_, Database>, date : String, project_id: i32) -> Result<String, Error> {
+async fn get_all_active_visible_sessions(database: tauri::State<'_, Database>) -> Result<String, Error> {
   
-  println!("getting sessions");
+  let mut connection = match database.0.lock() {
+    Err(_) => return Err(Error::ConnectionFailed),
+    Ok(v) => v,
+  };
+
+  let mut stmt = connection.prepare("
+  SELECT
+    session.id,
+    session.project_id,
+    session.start,
+    session.end,
+    session.target
+  FROM
+    session
+  INNER JOIN project ON
+    project.id = session.project_id
+  WHERE
+    project.visible = 1
+    AND project.archived = 0
+  ORDER BY 
+    session.start DESC")?;
+
+  let project_iter = stmt.query_map(params![], |row| {
+      Ok(Session {
+          id: row.get(0)?,
+          project_id: row.get(1)?,
+          start: row.get(2)?,
+          end: row.get(3).unwrap(),
+          target: row.get(4)?
+      })
+  })?;
+
+  let mut projects = Vec::new();
+  for project in project_iter {
+    projects.push(project?);
+  }
+  
+  Ok(serde_json::to_string(&projects)?)
+}
+
+#[tauri::command]
+async fn get_sessions_in_range(database: tauri::State<'_, Database>, start : String, end : String) -> Result<String, Error> {
+  
+  let mut connection = match database.0.lock() {
+    Err(_) => return Err(Error::ConnectionFailed),
+    Ok(v) => v,
+  };
+
+  let mut stmt = connection.prepare("
+  SELECT
+    session.id,
+    session.project_id,
+    session.start,
+    session.end,
+    session.target
+  FROM
+    session
+  INNER JOIN project ON
+    project.id = session.project_id
+  WHERE
+    project.visible = 1
+    AND project.archived = 0
+    AND (end > ?1 OR end IS NULL)
+    AND start < ?2
+  ORDER BY 
+    session.start DESC")?;
+
+  let project_iter = stmt.query_map(params![start, end], |row| {
+      Ok(Session {
+          id: row.get(0)?,
+          project_id: row.get(1)?,
+          start: row.get(2)?,
+          end: row.get(3).unwrap(),
+          target: row.get(4)?
+      })
+  })?;
+
+  let mut projects = Vec::new();
+  for project in project_iter {
+    projects.push(project?);
+  }
+  
+  Ok(serde_json::to_string(&projects)?)
+}
+
+#[tauri::command]
+async fn get_project_sessions_after_date(database: tauri::State<'_, Database>, date : String, project_id: i32) -> Result<String, Error> {
   
   let mut connection = match database.0.lock() {
     Err(_) => return Err(Error::ConnectionFailed),
