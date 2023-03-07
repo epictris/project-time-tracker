@@ -1,30 +1,42 @@
 <script lang="ts">
 	import Graph from "../../components/Graph.svelte";
-	import { getHours, getMinutes, getSeconds, showHours, showMinutes, showSeconds } from "../../scripts/helpers";
-	import { DB_getActiveProjects, DB_getSessionsAfterDate, DB_getSessionsInRange, DB_hideProject, DB_showProject } from "../../scripts/queries";
+	import { getHours, getMinutes, getSeconds, showHours, showMinutes, showSeconds, UTCStringToMillis } from "../../scripts/helpers";
+	import { DB_getActiveProjects, DB_getAllVisibleSessions, DB_getSessionsAfterDate, DB_getSessionsInRange, DB_hideProject, DB_showProject } from "../../scripts/queries";
   import { data } from "../stores";
 
-  let range = {}
-  let projectData : any = [];
+  const Ranges = {
+    WEEK: 0,
+    MONTH: 1,
+    YEAR: 2,
+    ALL: 3
+  }
 
-  viewWeek();
+  let dateRange : any = {};
+  let selectedRange : number = Ranges.WEEK
+  let activeProjectsData : any = [];
 
-  $: refreshData(range);
+  $: refreshData(selectedRange);
 
-  function refreshData(range : any) : any {
-    return Promise.all([DB_getActiveProjects(), DB_getSessionsInRange(range)]).then((data) => {
+  function processData(data : any) {
       let projects = JSON.parse(data[0]);
       let sessions = JSON.parse(data[1]);
-      let projectDataMap : any = {}
 
+      let projectDataMap : any = {}
       for(let project of projects) {
         projectDataMap[project.id] = {id: project.id, name: project.name, color: project.color, visible: project.visible, data: {}}
       }
 
+      if(selectedRange == Ranges.ALL) {
+        if(sessions.length > 0) {
+          dateRange = { start: UTCStringToMillis(sessions[sessions.length-1].start)! - 86400000 , end: sessions[0].end != null ? UTCStringToMillis(sessions[0].end) : Date.now() }
+
+        } else {
+          dateRange = {start: Date.now() - 86400000, end: Date.now()}
+        }
+      }
+
       for(let session of sessions) {
         // ignore if session is for archived project.
-        if(!projectDataMap[session.project_id]) {continue}
-
         let sessionStart = new Date(session.start! + " UTC")
         let sessionEnd;
         if(session.end) {
@@ -33,8 +45,7 @@
           sessionEnd = new Date(Date.now());
         }
         // Ignore time outside of specified range
-        if (sessionStart.getTime() < range.start) { sessionStart = new Date(range.start) }
-
+        if (sessionStart.getTime() < dateRange.start) { sessionStart = new Date(dateRange.start) }
         // When the start and end of the session occur on the same date (simple case)
         if(sessionStart.toDateString() == sessionEnd.toDateString()) {
           let date = sessionStart.toDateString();
@@ -63,32 +74,67 @@
         }
       }
 
-      // Loop through all projects
-      const daysInRange = 1 + Math.floor((range.end - range.start) / 86400000)
+      // Calculate average and total for each active, visible project. (for projects list)
+      let tempActiveProjectsData = []
+      for(const key of Object.keys(projectDataMap)) {
+        if(projectDataMap[key].visible) {
+          let total = calculateTotal(projectDataMap[key].data)
+          let average = total / calculateNumberOfDays(projectDataMap[key].data)
+          projectDataMap[key].total = total
+          projectDataMap[key].average = average
+        } else {
+          projectDataMap[key].total = 0
+          projectDataMap[key].average = 0
+        }
+        tempActiveProjectsData.push(projectDataMap[key])
+      }
+      activeProjectsData = tempActiveProjectsData;
+
+      // Generate data points for each visible project (for graph)
+      const daysInRange = 1 + Math.floor((dateRange.end - dateRange.start) / 86400000)
 
       let tempData : any = []
       for(const key of Object.keys(projectDataMap)) {
-
+        if(!projectDataMap[key].visible) {continue}
       // populate data for all dates in range
         let tempDays = []
+        let cumulativeTotal = 0;
         for(let day = 0; day < daysInRange; day++) {
-          let date = new Date(range.start + day * 86400000);
-          tempDays[day] = { date: day, dateString: formatDate(date), duration: projectDataMap[key].data[date.toDateString()] | 0 }
+          let date = new Date(dateRange.start + day * 86400000);
+          let rawDuration = projectDataMap[key].data[date.toDateString()] | 0
+          cumulativeTotal += rawDuration;
+          tempDays[day] = { date: day, dateString: formatDate(date), cumulative: cumulativeTotal, duration: projectDataMap[key].data[date.toDateString()] | 0 }
         }
         projectDataMap[key].data = tempDays;
-
-        let total = calculateTotal(tempDays)
-        let average = total / tempDays.length
-
-        projectDataMap[key].total = total;
-        projectDataMap[key].average = average;
-
         tempData.push(projectDataMap[key])
       }
       $data = tempData;
-    })
-  }
+    }
 
+  function refreshData(rangeSelection : any) : any {
+
+    let range = {};
+
+    switch(rangeSelection) {
+      case Ranges.WEEK:
+        let weekStart = new Date(Date.now() - 1000 * 60 * 60 * 24 * 6)
+        weekStart.setHours(0, 0, 0, 0)
+        dateRange = {start: weekStart.getTime(), end: Date.now()}
+        return Promise.all([DB_getActiveProjects(), DB_getSessionsInRange(dateRange)]).then((data) => processData(data));
+      case Ranges.MONTH:
+        let monthStart = new Date(Date.now() - 1000 * 60 * 60 * 24 * 29)
+        monthStart.setHours(0, 0, 0, 0)
+        dateRange = {start: monthStart.getTime(), end: Date.now()}
+        return Promise.all([DB_getActiveProjects(), DB_getSessionsInRange(dateRange)]).then((data) => processData(data));
+      case Ranges.YEAR:
+        let yearStart = new Date(Date.now() - 1000 * 60 * 60 * 24 * 364)
+        yearStart.setHours(0, 0, 0, 0)
+        dateRange = {start: yearStart.getTime(), end: Date.now()}
+        return Promise.all([DB_getActiveProjects(), DB_getSessionsInRange(dateRange)]).then((data) => processData(data));
+      case Ranges.ALL:
+        return Promise.all([DB_getActiveProjects(), DB_getAllVisibleSessions()]).then((data) => processData(data));
+    }
+  }
     function formatDate(date : Date) {
     let segments = date.toDateString().split(" ");
     let day = segments[2]
@@ -96,35 +142,37 @@
     let year = segments[3].slice(-2)
     return day + " " + month + " " + year
   }
-
   function calculateTotal(data : any) {
     let total = 0;
-    for(let day of data) {
-      total += day.duration;
+    for(let dailyTotal of Object.values(data)) {
+      total += (dailyTotal as number)
     }
     return total;
   }
 
+  function calculateNumberOfDays(data : any) {
+    let dates = Object.keys(data);
+    if (dates.length == 0) { return 0 }
+    let min = null
+    let max = null
+    for(let date of Object.keys(data)) {
+      let time = new Date(date).getTime()
+      min = min != null ? (time < min ? time : min) : time
+      max = max != null ? (time > max ? time : max) : time
+    }
+    return (1 + (max! - min!) / 86400000)
+  }
     function viewWeek() {
-      let start = new Date(Date.now() - 1000 * 60 * 60 * 24 * 6)
-      start.setHours(0, 0, 0, 0)
-      range = {start: start.getTime(), end: Date.now()}
+      selectedRange = Ranges.WEEK;
     }
-
     function viewMonth() {
-      let start = new Date(Date.now() - 1000 * 60 * 60 * 24 * 30) // 30
-      start.setHours(0, 0, 0, 0)
-      range = {start: start.getTime(), end: Date.now()}
+      selectedRange = Ranges.MONTH;
     }
-
     function viewYear() {
-      let start = new Date(Date.now() - 1000 * 60 * 60 * 24 * 365)
-      start.setHours(0, 0, 0, 0)
-      range = {start: start.getTime(), end: Date.now()}
+      selectedRange = Ranges.YEAR;
     }
-
     function viewCustom() {
-
+      selectedRange = Ranges.ALL;
     }
 
     function setButtonActive(e : MouseEvent) {
@@ -133,25 +181,21 @@
       }
       (e.target! as HTMLElement).classList.add("selected")
     }
-
     function toggleProjectVisibility(id : number, visible: boolean) {
       if(visible) {
-        DB_hideProject(id).then(refreshData(range))
+        DB_hideProject(id).then(refreshData(selectedRange))
       } else {
-        DB_showProject(id).then(refreshData(range))
+        DB_showProject(id).then(refreshData(selectedRange))
       }
     }
-
 </script>
 
 <style>
-
   #select-range {
     display: flex;
     padding: 12px 0px 5px 0px;
     gap: 5px;
   }
-
   .range {
     flex: 1;
     font-family: "poppinsregular";
@@ -163,12 +207,10 @@
     color: #fff;
     transition: all 150ms;
   }
-
   .range.selected {
     color: #1e1e1e;
     background: #d3d3d3;
   }
-
   .project {
     line-height: 40px;
     padding: 0px 15px;
@@ -184,12 +226,10 @@
     background: #1e1e1e;
     box-shadow: 1px 1px 3px #000;
   }
-
   .project p {
     padding: 0;
     margin: 0;
   }
-
   #data-labels {
   padding: 0 15px;
   display: flex;
@@ -198,32 +238,26 @@
   justify-content: space-between;
   font-family: "poppinsregular"
   }
-
   #label-name {
     flex: 5;
   }
-
   #label-average {
     flex: 3;
     text-align: right;
   }
-
   #label-total {
     flex: 2;
     text-align: right;
   }
-
   .name {
     flex: 5;
   }
-
   .average {
     flex: 3;
     text-align: right;
     color: var(--color);
     transition: all 150ms ease;
   }
-
   .total {
     flex: 2;
     text-align: right;
@@ -235,15 +269,13 @@
   font-family: "latoregular";
   line-height: 0px;
 }
-
 .unit {
   font-size: 8pt;
   line-height: 0px;
 }
-
 </style>
 
-<Graph {range}/>
+<Graph {dateRange}/>
 
 <div id="select-range">
   <button on:click={(e) => {viewWeek(); setButtonActive(e)}} class="range selected">
@@ -266,34 +298,35 @@
   <p id="label-total">Total</p>
 </div>
 
-{#each $data as project}
+{#each activeProjectsData as project}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <div class="project" style="--color: #{project.visible ? project.color : 121212}" on:click={() => toggleProjectVisibility(project.id, project.visible)}>
     <p class="name">
       {project.name}
     </p>
-    <p class="average" style="--color: #{project.visible ? "d3d3d3" : 121212}">
-      {#if showHours(project.average)}
-        <span class="number">{getHours(project.average)}</span><span class="unit">h</span>
-      {/if}
-      {#if showMinutes(project.average)}
-      <span class="number">{getMinutes(project.average)}</span><span class="unit">m</span>
-      {/if}
-      {#if showSeconds(project.average)}
-      <span class="number">{getSeconds(project.average)}</span><span class="unit">s</span>
-      {/if}
-    </p>
-    <p class="total" style="--color: #{project.visible ? "d3d3d3" : 121212}">
-      {#if showHours(project.total)}
-      <span class="number">{getHours(project.total)}</span><span class="unit">h</span>
-      {/if}
-      {#if showMinutes(project.total)}
-      <span class="number">{getMinutes(project.total)}</span><span class="unit">m</span>
-      {/if}
-      {#if showSeconds(project.total)}
-      <span class="number">{getSeconds(project.total)}</span><span class="unit">s</span>
-      {/if}
-
-    </p>
+    {#if project.visible}
+      <p class="average" style="--color: #{project.visible ? "d3d3d3" : 121212}">
+        {#if showHours(project.average)}
+          <span class="number">{getHours(project.average)}</span><span class="unit">h</span>
+        {/if}
+        {#if showMinutes(project.average)}
+        <span class="number">{getMinutes(project.average)}</span><span class="unit">m</span>
+        {/if}
+        {#if showSeconds(project.average) || project.average < 1000}
+        <span class="number">{getSeconds(project.average)}</span><span class="unit">s</span>
+        {/if}
+      </p>
+      <p class="total" style="--color: #{project.visible ? "d3d3d3" : 121212}">
+        {#if showHours(project.total)}
+        <span class="number">{getHours(project.total)}</span><span class="unit">h</span>
+        {/if}
+        {#if showMinutes(project.total)}
+        <span class="number">{getMinutes(project.total)}</span><span class="unit">m</span>
+        {/if}
+        {#if showSeconds(project.total) || project.total < 1000}
+        <span class="number">{getSeconds(project.total)}</span><span class="unit">s</span>
+        {/if}
+      </p>
+    {/if}
   </div>
 {/each}

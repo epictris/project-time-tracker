@@ -67,7 +67,6 @@
     let selectedMinutes = getSelectedElement(minutesElement).dataset.minute
 
     targetMinutes = Number(selectedHours) * 60 + Number(selectedMinutes);
-    console.log("TEST");
     dispatch("close");
   }
   

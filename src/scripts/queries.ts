@@ -35,6 +35,10 @@ export function DB_getSessionsInRange(range : any) : Promise<any> {
   return invoke('get_sessions_in_range', {start: start, end: end});
 }
 
+export function DB_getAllVisibleSessions() : Promise<any> {
+  return invoke('get_all_active_visible_sessions');
+}
+
 export function DB_getProjectSessionsAfterDate(date : number, project_id : number) : Promise<any> {
   let result = new Date(date).toISOString().replace("T", " ").replace("Z", "");
   return invoke('get_project_sessions_after_date', {date: result, projectId: project_id});

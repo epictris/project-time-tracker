@@ -19,8 +19,6 @@ export let selectedSession! : ProjectSession;
 let sessionStart = selectedSession.start;
 let sessionEnd = selectedSession.end;
 
-console.log(sessionStart);
-
 let popupConfirm : any;
 let selectedDate : string | null;
 let selectStart : any;

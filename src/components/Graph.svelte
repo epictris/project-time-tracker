@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { updated } from '$app/stores';
-
-
   import { extent } from 'd3-array';
   import { scaleLinear } from 'd3-scale';
   import { line, curveLinear } from 'd3-shape';
@@ -12,9 +10,7 @@
   import { interpolate } from "flubber"
 	import { getHours, getMinutes, getSeconds, showHours, showMinutes, showSeconds } from '../scripts/helpers';
 	import { quintOut } from 'svelte/easing';
-
-  export let range : any;
-
+  export let dateRange : any;
   onMount(() => {
     document.addEventListener('click', (e) => {
       if(!e.target) return
@@ -23,17 +19,13 @@
       }
     })
   })
-
   const graphHeight = 60
   const graphWidth = 100
   const edgeBuffer = 4;
-  let highestPoint : SVGCircleElement;
-  let lowestPoint : SVGCircleElement;
   let box;
   let selectedPoint : any = null;
   let scaledX : any = null;
   let scaledY : any = null;
-
   let toolTip : HTMLElement;
   let toolTipLeft = 0;
   let toolTipTop = 0;
@@ -42,18 +34,8 @@
   let dateLine : HTMLElement;
   let selectedDate : string = "";
   let toolTipData : any = [];
-
   let container : HTMLElement;
-
-  let cumulativeData : any = [];
   let cumulative : boolean = false;
-
-  $: checkData($data)
-
-  function checkData(data : any) {
-    selectedPoint = null;
-    if(!data) $data = []
-  }
 
   function calculateXExtent(data : any) : [number, number] {
     if(!data) return [0, 0]
@@ -67,77 +49,36 @@
     }
     return [min, max]
   }
-
   function calculateYExtent(data : any) : [number, number] {
     if(!data) return [0, 0]
     let max = null;
     let min = null;
     for(let project of data) {
       for(let point of project.data) {
-        (max == null) ? max = point.duration : max = point.duration > max ? point.duration : max;
-        (min == null) ? min = point.duration : min = point.duration < min ? point.duration : min;
+        let dailyData : any = cumulative ? point.cumulative : point.duration;
+        (max == null) ? max = dailyData : max = dailyData > max ? dailyData : max;
+        (min == null) ? min = dailyData : min = dailyData < min ? dailyData : min;
       }
     }
     return [min, max]
   }
-
   let paths : any = {}
   let points : any = {}
-
   $: updatePaths($data)
 
-
-  function removeHidden(data : any) : any {
-    for (let i = 0; i < data.length; i++) {
-      if(data[i].visible == false) {
-        data.splice(i, 1)
-        console.log(data);
-        return removeHidden(data)
-      }
-    }
-    return data;
-  }
-
   function updatePaths(data : any[]) {
-    removeHidden(data);
-    console.log($data);
-
-    for (let i = 0; i < data.length; i++) {
-      if($data[i].visible == false) {
-        // $data[i].data = [];
-      }
-    }
-
-    
-    console.log(data);
-
-    cumulativeData = structuredClone(data);
-      for(let project of cumulativeData) {
-      let projectCumulativeData : any = []
-        for(let point of project.data) {
-          let cumulativeTotal = projectCumulativeData[point.date-1] ? point.duration + projectCumulativeData[point.date-1].duration : point.duration
-          projectCumulativeData.push({date: point.date, dateString: point.dateString, duration: cumulativeTotal})
-        }
-        project.data = projectCumulativeData;
-      }
-
-      if(cumulative) {
-        data = cumulativeData
-      }
+    if(data == null || data == undefined) {data = []}
 
     const xScale = scaleLinear()
     .domain(calculateXExtent(data)).range([edgeBuffer, graphWidth - edgeBuffer])
-
     const yScale = scaleLinear()
     .domain(calculateYExtent(data)).range([graphHeight - edgeBuffer, edgeBuffer])
-
     const pathLine = line()
     // @ts-ignore
     .x(d => xScale(d.date))
     // @ts-ignore
-    .y(d => yScale(d.duration))
+    .y(d => yScale(cumulative ? d.cumulative : d.duration))
     .curve(curveLinear)
-
     for(let project of data) {
         if(!project.visible) continue;
       // paths[project.id] = pathLine(project.data)
@@ -147,82 +88,45 @@
       paths[project.id] = newPath;
       }
   }
-
   // tweenSvgPath(testPath, testPath2, 500).onUpdate((svg) => {
   //   testPath = svg
   // })
-
     function isCumulative(val : boolean) {
       return val ? "selected" : "";
     }
-
     function createToolTip(e : TouchEvent) {
       if($data.length == 0) return;
       if((e.target as HTMLElement).id != "container") {return}
-
       let width = (e.target as HTMLElement).getBoundingClientRect().width;
       let height = (e.target as HTMLElement).getBoundingClientRect().height;
       let left = (e.target as HTMLElement).getBoundingClientRect().left;
       let top = (e.target as HTMLElement).getBoundingClientRect().y;
-
         const xScale = scaleLinear()
       .domain([0, width]).range([edgeBuffer, graphWidth - edgeBuffer])
-
       const yScale = scaleLinear()
       .domain([0, height]).range([graphHeight - edgeBuffer, edgeBuffer])
-
       let touchX = e.touches[0].clientX
       let touchY = e.touches[0].clientY
-
       scaledX = xScale(touchX);
       scaledY = (graphHeight - (edgeBuffer)) - yScale(touchY - top);
         if(touchX - left > width || touchX - left < left) {return}
-
-
       const numberOfPoints = $data[0].data.length;
       let newSelectedPoint = Math.floor((touchX - left) / width * numberOfPoints);
       if(selectedPoint == newSelectedPoint) return;
       selectedPoint = newSelectedPoint;
-
       let dateLineX = left + 4.5 + (selectedPoint / (numberOfPoints-1)) * (width * 0.92)
-
       let toolTipWidth = 100
-
       let toolTipX = dateLineX - toolTipWidth - toolTipOffset;
-
       if(toolTipX < 0) {
         toolTipX += toolTipWidth + (2 * toolTipOffset);
       }
-
       toolTipLeft = toolTipX;
-
       dateLineLeft = dateLineX;
       toolTipTop = 60;
-
       selectedDate = $data[0].data[selectedPoint].dateString;
       let tempToolTipData = []
       for(let project of $data) {
-        tempToolTipData.push({duration: project.data[selectedPoint].duration, color: project.color})
-      }
-      toolTipData = tempToolTipData;
-    }
-
-    $: updateToolTipData(selectedPoint);
-
-    function updateToolTipData(point : any) {
-      if($data.length == 0) return
-      if(point == null) return;
-      selectedDate = $data[0].data[point].dateString;
-      let tempToolTipData = []
-      if(cumulative) {
-        for(let project of cumulativeData) {
-        tempToolTipData.push({duration: project.data[point].duration, color: project.color})
-      }
-      toolTipData = tempToolTipData;
-      return
-      }
-      for(let project of $data) {
-        tempToolTipData.push({duration: project.data[point].duration, color: project.color})
+        tempToolTipData.push({cumulative: project.data[selectedPoint].cumulative, duration: project.data[selectedPoint].duration, color: project.color})
       }
       toolTipData = tempToolTipData;
     }
@@ -234,7 +138,6 @@
     let year = segments[3].slice(-2)
     return day + " " + month + " " + year
   }
-
 </script>
 
 <!-- <div bind:this={highestPointLabel} class="label">{formatDuration(maxDuration)}</div>
@@ -245,14 +148,14 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <div id="container" bind:this={container} on:touchstart={(e) => createToolTip(e)} on:touchmove={(e) => createToolTip(e)}>
   <div id="top">
-    <button on:click={() => {cumulative = false; updateToolTipData(selectedPoint); updatePaths($data)}} id="raw" class="type {isCumulative(!cumulative)}"/>
-    <button on:click={() => {cumulative = true; updateToolTipData(selectedPoint); updatePaths($data)}} id="cumulative" class="type {isCumulative(cumulative)}"/>
+    <button on:click={() => {cumulative = false;  updatePaths($data)}} id="raw" class="type {isCumulative(!cumulative)}"/>
+    <button on:click={() => {cumulative = true;  updatePaths($data)}} id="cumulative" class="type {isCumulative(cumulative)}"/>
   </div>
   {#if selectedPoint != null}
     <div style="left: {dateLineLeft}px" id="dateline" bind:this={dateLine}/>
   {/if}
   <svg viewBox="0 0 {graphWidth} {graphHeight}" bind:this={box}>
-    {#if $data.length > 0}
+    {#if $data != undefined}
       {#each $data as project (project.id)}
         {#if cumulative}
           <defs>
@@ -274,11 +177,11 @@
   </svg>
   <div id="bottom">
     <div id="range-start">
-      {formatDate(new Date(range.start))}
+      {formatDate(new Date(dateRange.start))}
       <!-- {$data[0].data[0].dateString} -->
     </div>
     <div id="range-end">
-      {formatDate(new Date(range.end))}
+      {formatDate(new Date(dateRange.end))}
       <!-- {$data[0].data[$data[0].data.length-1].dateString} -->
     </div>
   </div>
@@ -289,14 +192,14 @@
       <p id="selected-date">{selectedDate}</p>
       {#each toolTipData as data}
         <p class="tooltip-data" style="--color: #{data.color}">
-          {#if showHours(data.duration)}
-            <span class="number">{getHours(data.duration)}</span><span class="unit">h</span>
+          {#if showHours(cumulative ? data.cumulative : data.duration)}
+            <span class="number">{getHours(cumulative ? data.cumulative : data.duration)}</span><span class="unit">h</span>
           {/if}
-          {#if showMinutes(data.duration)}
+          {#if showMinutes(cumulative ? data.cumulative : data.duration)}
             <span class="number">{getMinutes(data.duration)}</span><span class="unit">m</span>
           {/if}
-          {#if showSeconds(data.duration)}
-            <span class="number">{getSeconds(data.duration)}</span><span class="unit">s</span>
+          {#if showSeconds(cumulative ? data.cumulative : data.duration) || (cumulative ? data.cumulative : data.duration) < 1000}
+            <span class="number">{getSeconds(cumulative ? data.cumulative : data.duration)}</span><span class="unit">s</span>
           {/if}
         </p>
       {/each}</div>
@@ -314,11 +217,9 @@
     display: flex;
     justify-content: center;
   }
-
   #tooltip-content {
     padding: 10px 0px;
   }
-
   #selected-date {
     color: #d3d3d3;
     margin: 0;
@@ -326,7 +227,6 @@
     font-size: 10pt;
     line-height: 16pt;
   }
-
   .tooltip-data {
     margin: 0;
     padding: 0;
@@ -334,17 +234,14 @@
     color: var(--color);
     font-size: 12pt;
   }
-
   .number {
   font-family: "latoregular";
   line-height: 0px;
 }
-
 .unit {
   font-size: 8pt;
   line-height: 0px;
 }
-
   #dateline {
     transition: 200ms all;
     position: absolute;
@@ -356,23 +253,19 @@
     top: 0;
     left: 0;
   }
-
   svg {
     position: relative;
     pointer-events: none;
   }
-
   #container {
     background: #1e1e1e;
     border-radius: 10px;
     position: relative;
   }
-
   #top {
     pointer-events: none;
     display: flex;
   }
-
   #raw:after, #cumulative:after {
     transition: 150ms all;
     width: 20px;
@@ -384,16 +277,12 @@
     left: 3px;
     filter: invert(0.83);
   }
-
   #raw::after {
     background-image: url("../assets/images/raw.svg");
-
   }
-
   #cumulative:after {
     background-image: url("../assets/images/cumulative.svg");
   }
-
   #raw.selected::after, #cumulative.selected::after {
     filter: invert(0.12);
   }
@@ -411,11 +300,9 @@
     border: none;
     background: none;
   }
-
   .type.selected {
     background: #d3d3d3;
   }
-
   #bottom {
     pointer-events: none;
     display: flex;
@@ -426,7 +313,6 @@
     font-family: "poppinsregular";
     font-size: 10pt;
   }
-
   path {
     transition: 150ms all;
     stroke: var(--color);
@@ -434,11 +320,9 @@
     /* fill: linear-gradient(90deg, rgba(2,0,36,1) 0%, rgba(9,9,121,1) 35%, rgba(0,212,255,1) 100%); */
     /* fill: var(--color) */
   }
-
   .dot {
     fill: #fff;
   }
-
   .label {
     position: absolute;
     color: #fff;

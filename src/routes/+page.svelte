@@ -69,7 +69,7 @@
   border-radius:10px;
   color: var(--color);
   border: 2px solid var(--color);
-  margin: 8px 0;
+  margin: 10px 0;
   background: none;
   transition: all 200ms ease;
 }
