@@ -142,6 +142,14 @@ function renderDate(date : any) {
   line-height: 0px;
 }
 
+#sessions {
+  flex: 1;
+  overflow: scroll;
+}
+#inview {
+  height: 1px;
+}
+
 </style>
 
 <div id="data-labels">
@@ -149,7 +157,7 @@ function renderDate(date : any) {
   <p id="label-duration">Duration</p>
   <p id="label-date">Date</p>
 </div>
-
+<div id="sessions">
 {#each sessions as session } 
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <div class="session" style="--color: #{session.color}" id="s{session.id}" data-id={session.id} on:click={(e) => handleSessionClick(e.target)}>
@@ -174,6 +182,6 @@ function renderDate(date : any) {
     </span>
   </div>
 {/each}
-<div use:inview={{}} on:change={handleChange}></div>
-
+<div id="inview" use:inview={{}} on:change={handleChange}></div>
+</div>
 <svelte:component this={popupWindow} {selectedSession} on:close={handleClose}/>

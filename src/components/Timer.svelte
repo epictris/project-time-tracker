@@ -10,8 +10,8 @@
   export let dailySessions : any;
   
   const minZoomLevel = 30 * 1000; //minimum zoom level (in milliseconds)
-  const minTimerHeight = 24;
-  const topTimerBuffer = 27;
+  const minTimerHeight = 10;
+  const topTimerBuffer = 43;
   let containerElement : HTMLElement;
 
   type Timer = {
@@ -71,43 +71,51 @@
 
     clearInterval(timerLoop);
 
-    let activeSession = getActiveSession();
-    if(!activeSession) return;
+    // let activeSession = getActiveSession();
+    let activeSessions = getActiveSessions();
+    // if(!activeSession) return;
+    if(activeSessions.length == 0) {return}
 
-    let activeTimer = renderedTimers.find(timer => {return timer.active});
-    if(!activeTimer) return;
-    
-    let timerIndex = renderedTimers.indexOf(activeTimer);
+    let activeTimers : any = []
+    for (let i = 0; i < renderedTimers.length; i++) {
+      let timer = renderedTimers[i]
+      if(timer.active) activeTimers.push({total: timer.dailySessionTotal, index: i})
+    }
+
+    if (!activeTimers.length) return;
+
     let timerStartMillis = new Date().getTime();
-    let timerStartTotal = activeTimer.dailySessionTotal;
-
     let currentDay  = new Date().getDate();
 
     if(longestDuration < minZoomLevel) longestDuration = minZoomLevel;
 
     timerLoop = setInterval(() => {
-      let newCurrentDay = new Date().getDate();
-      if (newCurrentDay != currentDay) {
+      let currentTime = new Date()
+      if (currentTime.getDate() != currentDay) {
         dispatch("updateSessions");
         return clearInterval(timerLoop);
       }
-      if(!activeTimer) return clearInterval(timerLoop);
-      let newDailySessionTotal = timerStartTotal + calculateSessionDuration(timerStartMillis, null);
-      if(newDailySessionTotal > longestDuration) longestDuration = newDailySessionTotal;
+      if (!activeTimers.length) return clearInterval(timerLoop);
 
-      // Set the active timer session total
-      renderedTimers[timerIndex].dailySessionTotal = newDailySessionTotal;
-      // Set new active timer height
-      renderedTimers[timerIndex].pixelHeight = minTimerHeight + calculateDisplayHeight(longestDuration, containerHeight, newDailySessionTotal);
+      for(let timer of activeTimers) {
+        let newDailySessionTotal = timer.total + (currentTime.getTime() - timerStartMillis)
+        // console.log(timer.dailySessionTotal);
+        if(newDailySessionTotal > longestDuration) longestDuration = newDailySessionTotal;
+        renderedTimers[timer.index].dailySessionTotal = newDailySessionTotal;
+      }
+      // console.log(renderedTimers);
+
+      // for(let timer of activeTimers) {
+      //   renderedTimers[timer.index].pixelHeight = minTimerHeight + calculateDisplayHeight(longestDuration, containerHeight, renderedTimers[timer.index].dailySessionTotal);
+      // }
+
       for(let index = 0; index < renderedTimers.length; index++) {
         if(renderedTimers[index].target > 0) {renderedTimers[index].targetPixelHeight = minTimerHeight + calculateTargetHeight(longestDuration, containerHeight, renderedTimers[index].target)}
-        if(index != timerIndex) {
           if(renderedTimers[index].dailySessionTotal > 0) {
             renderedTimers[index].pixelHeight = minTimerHeight + calculateDisplayHeight(longestDuration, containerHeight, renderedTimers[index].dailySessionTotal)
           } else {
             renderedTimers[index].pixelHeight = 0;
           }
-        } 
       }
     }, 16);
   }
@@ -117,11 +125,13 @@
     return null;
   }
 
-  function getActiveSession() : Session | null {
+
+  function getActiveSessions() : Session[] {
+    let sessions = []
     for (let session of dailySessions) {
-      if(!session.end) return session;
+      if(!session.end) sessions.push(session)
     }
-    return null;
+    return sessions;
   }
 
   function calculateSessionDuration(start : number | null, end : number | null) {
@@ -208,9 +218,9 @@
   function setTimerFontSize(length : number) {
     if(length < 6) return "15px";
     if(length === 6) return "14px";
-    if(length === 7) return "13px";
-    if(length === 8) return "12px";
-    if(length === 9) return "10px";
+    if(length === 7) return "12px";
+    if(length === 8) return "10px";
+    if(length === 9) return "9px";
     return "8px";
   }
 
@@ -222,7 +232,7 @@
 
 <style>
 .timer {
-  height: 50vh;
+  height: 48vh;
   background: #1e1e1e;
   border-radius:8px;
   display: flex;
@@ -232,6 +242,7 @@
   gap: var(--gap);
   padding: 0 var(--gap);
   overflow: hidden;
+  box-shadow: 1px 1px 3px #000;
 }
 
 .timer-bar-container {
@@ -253,10 +264,11 @@
 .target {
   position: absolute;
   width: 100%;
-  background: var(--color);
   border-radius: 8px 8px 0px 0px;
   color: #1e1e1e;
-  opacity: 0.15;
+  border: 3px solid var(--color);
+  filter: brightness(50%);
+  border-bottom: none;
 }
 
 .target > div {
@@ -270,18 +282,28 @@
 .targetcount {
   line-height: 24px;
   height: 24px;
-  font-family: "latobold";
+  font-family: "latoregular";
   color: #121212;
   margin: 0;
   padding: 0;
   font-size: var(--font-size);
   text-align: center;
   width: 100%;
+  color: var(--color);
+  position: relative;
+}
+
+.timercount {
+  top: -27px;
+}
+
+.targetcount {
+  color: var(--color);
 }
 
 .timercount > span,
 .targetcount > span {
-  font-family: "poppinsmedium";
+  font-family: "latoregular";
   font-size: calc(var(--font-size) - 3px);
   margin: 0;
 }
@@ -289,17 +311,42 @@
 .timerbar {
   position: relative;
   box-sizing: border-box;
-  background: var(--color);
+  /* background: #1e1e1e; */
+  border: 3px solid var(--color);
+  border-bottom: none;
   border-radius: 10px 10px 1px 1px;
   width: 100%;
+  transition: opacity 250ms;
+}
+
+.timerbar:before {
+  transition: filter 250ms;
+  content: "";
+  width: 100%;
+  height: 100%;
+  background: var(--color);
+  position:absolute;
+  filter: brightness(50%) saturate(90%);
+  border-radius: 7px 7px 0px 0px;
+  top: 0px;
+  left: 0px;
+}
+
+.timer-bar-container.active .timerbar {
+  background: var(--color);
+  filter: brightness(100%);
+}
+
+.timer-bar-container.active .timerbar:before {
+  filter: brightness(1);
 }
 </style>
 
 <div class="timer" style="--gap: {setTimerGap(renderedTimers.length)}" bind:this={containerElement}>
   {#each renderedTimers as timer (timer.id)}
-    <div class="timer-bar-container">
+    <div style="--color: #{timer.color};" class="timer-bar-container{timer.active ? " active" : ""}">
       <div>
-        <div class="target" style="--color: #{timer.color}; height: {timer.targetPixelHeight}px">
+        <div class="target" style="height: {timer.targetPixelHeight}px">
           <div style="height: {calculateTimerTextHeight(timer.targetPixelHeight)}px;">
             <p class="targetcount" style="--font-size: {setTimerFontSize(renderedTimers.length)};">
               {#if showTargetHours(timer.target)}
@@ -311,7 +358,7 @@
             </p>
           </div>
         </div>
-        <div class="timerbar" id="timer{timer.id}" style="--color: #{timer.color}; height: {timer.pixelHeight}px">
+        <div class="timerbar" id="timer{timer.id}" style="--color: #{timer.color}; height: {timer.pixelHeight}px; opacity: {timer.dailySessionTotal > 0 ? 1 : 0}">
           <p class="timercount" style="--font-size: {setTimerFontSize(renderedTimers.length)}">
             {#if showHours(timer.dailySessionTotal)}
               {getHours(timer.dailySessionTotal)}<span>h</span>

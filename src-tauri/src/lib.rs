@@ -498,17 +498,11 @@ async fn start_session(database: tauri::State<'_, Database>, project_id: i32, ta
   let mut transaction = connection.transaction()?;
 
   transaction.execute(
-    "UPDATE project
-    SET active = 0
-    WHERE active = 1",
-    params![],
-  )?;
-
-  transaction.execute(
     "UPDATE session
     SET end = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')
-    WHERE end IS NULL",
-    params![],
+    WHERE end IS NULL
+    AND project_id = ?1",
+    params![project_id],
   )?;
 
   transaction.execute(
@@ -531,7 +525,7 @@ async fn start_session(database: tauri::State<'_, Database>, project_id: i32, ta
 }
 
 #[tauri::command]
-async fn complete_session(database: tauri::State<'_, Database>) -> Result<String, Error> {
+async fn complete_session(database: tauri::State<'_, Database>, project_id: i32) -> Result<String, Error> {
 
   let mut connection = match database.0.lock() {
     Err(_) => return Err(Error::ConnectionFailed),
@@ -541,12 +535,11 @@ async fn complete_session(database: tauri::State<'_, Database>) -> Result<String
   let mut transaction = connection.transaction()?;
 
   transaction.execute(
-    "UPDATE session 
-    SET
-      end = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')
-    WHERE
-      end IS NULL",
-    params![],
+    "UPDATE session
+    SET end = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')
+    WHERE end IS NULL
+    AND project_id = ?1",
+    params![project_id],
   )?;
 
   transaction.execute(
@@ -554,8 +547,8 @@ async fn complete_session(database: tauri::State<'_, Database>) -> Result<String
     SET 
       active = 0
     WHERE
-      active = 1",
-    params![],
+      id = ?1",
+    params![project_id],
   )?;
 
   transaction.commit()?;

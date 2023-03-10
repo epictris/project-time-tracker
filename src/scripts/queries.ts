@@ -44,8 +44,8 @@ export function DB_getProjectSessionsAfterDate(date : number, project_id : numbe
   return invoke('get_project_sessions_after_date', {date: result, projectId: project_id});
 }
 
-export function DB_completeSession() : Promise<any> {
-  return invoke('complete_session');
+export function DB_completeSession(id : number) : Promise<any> {
+  return invoke('complete_session', {projectId: id});
 }
 
 export function DB_getArchivedProjects() : Promise<any> {

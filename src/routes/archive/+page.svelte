@@ -106,12 +106,20 @@ function confirmDeletion() {
   color: #9a9a9a;
   pointer-events: none;
 }
+
+
+#projects {
+  flex: 1;
+  overflow: scroll;
+}
 </style>
 
 <div id="data-labels">
   <p>Project</p>
   <p>Daily Target</p>
 </div>
+
+<div id="projects">
 
 {#each projects as project (project.id)} 
   <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -131,5 +139,5 @@ function confirmDeletion() {
     {/if}
   </div>
 {/each}
-
+</div>
 <svelte:component this={popupWindow} {selectedProject} on:refreshData={showProjects} on:close={ () => {popupWindow = null}} on:deleted={confirmDeletion}/>

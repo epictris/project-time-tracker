@@ -47,6 +47,8 @@ import { createEventDispatcher } from "svelte";
 
 <style>
   #menu {
+    position: relative;
+    z-index: 2;
     display: inline-block;
     height: 100vh;
     background-color: #121212;

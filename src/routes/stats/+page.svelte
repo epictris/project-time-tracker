@@ -28,13 +28,15 @@
 
       if(selectedRange == Ranges.ALL) {
         if(sessions.length > 0) {
-          dateRange = { start: UTCStringToMillis(sessions[sessions.length-1].start)! - 86400000 , end: sessions[0].end != null ? UTCStringToMillis(sessions[0].end) : Date.now() }
-
+          let start = new Date(UTCStringToMillis(sessions[sessions.length-1].start)!)
+          start.setHours(0, 0, 0, 0)
+          let end = new Date(sessions[0].end != null ? UTCStringToMillis(sessions[0].end)! : Date.now())
+          end.setHours(23, 59, 59, 999)
+          dateRange = { start: start.getTime(), end: end.getTime() }
         } else {
-          dateRange = {start: Date.now() - 86400000, end: Date.now()}
+          dateRange = {start: new Date(new Date(Date.now()).toDateString()), end: Date.now()}
         }
       }
-
       for(let session of sessions) {
         // ignore if session is for archived project.
         let sessionStart = new Date(session.start! + " UTC")
@@ -53,6 +55,7 @@
           projectDataMap[session.project_id].data[date] = projectDataMap[session.project_id].data[date]? projectDataMap[session.project_id].data[date] + duration : 0 + duration;
           continue;
         }
+
         
         // Calculate the number of days the session occurs across
         let numberOfDays = 1 + (new Date(sessionEnd.toDateString()).getTime() - new Date(sessionStart.toDateString()).getTime()) / 86400000
@@ -75,11 +78,13 @@
       }
 
       // Calculate average and total for each active, visible project. (for projects list)
+      const daysInRange = 1 + Math.floor((dateRange.end - dateRange.start) / 86400000)
+
       let tempActiveProjectsData = []
       for(const key of Object.keys(projectDataMap)) {
         if(projectDataMap[key].visible) {
           let total = calculateTotal(projectDataMap[key].data)
-          let average = total / calculateNumberOfDays(projectDataMap[key].data)
+          let average = total / daysInRange;
           projectDataMap[key].total = total
           projectDataMap[key].average = average
         } else {
@@ -90,8 +95,9 @@
       }
       activeProjectsData = tempActiveProjectsData;
 
+      // console.log(projectDataMap);
+      // (selectedRange == Ranges.ALL ? 2 : 1)
       // Generate data points for each visible project (for graph)
-      const daysInRange = 1 + Math.floor((dateRange.end - dateRange.start) / 86400000)
 
       let tempData : any = []
       for(const key of Object.keys(projectDataMap)) {
@@ -101,6 +107,7 @@
         let cumulativeTotal = 0;
         for(let day = 0; day < daysInRange; day++) {
           let date = new Date(dateRange.start + day * 86400000);
+        
           let rawDuration = projectDataMap[key].data[date.toDateString()] | 0
           cumulativeTotal += rawDuration;
           tempDays[day] = { date: day, dateString: formatDate(date), cumulative: cumulativeTotal, duration: projectDataMap[key].data[date.toDateString()] | 0 }
@@ -191,6 +198,13 @@
 </script>
 
 <style>
+
+  :global(#page) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
   #select-range {
     display: flex;
     padding: 12px 0px 5px 0px;
@@ -231,12 +245,15 @@
     margin: 0;
   }
   #data-labels {
+  box-shadow: 0px 0px 4px 4px #121212;
   padding: 0 15px;
   display: flex;
   color: #A9A9A9;
   font-size: 8pt;
   justify-content: space-between;
-  font-family: "poppinsregular"
+  font-family: "poppinsregular";
+  z-index: 1;
+  position: static;
   }
   #label-name {
     flex: 5;
@@ -273,6 +290,11 @@
   font-size: 8pt;
   line-height: 0px;
 }
+
+#projects {
+  flex: 1;
+  overflow: scroll;
+}
 </style>
 
 <Graph {dateRange}/>
@@ -298,6 +320,7 @@
   <p id="label-total">Total</p>
 </div>
 
+<div id="projects">
 {#each activeProjectsData as project}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <div class="project" style="--color: #{project.visible ? project.color : 121212}" on:click={() => toggleProjectVisibility(project.id, project.visible)}>
@@ -330,3 +353,5 @@
     {/if}
   </div>
 {/each}
+  
+</div>

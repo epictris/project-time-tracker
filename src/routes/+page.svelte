@@ -16,22 +16,33 @@
 
   refreshPageData();
 
-  function handleProjectClick(selectedElement : EventTarget | null) {
-    if(!selectedElement) return;
-    let projectID : number = Number((selectedElement as HTMLElement).dataset.id);
-    if(!projectID) return;
-    let clickedProject = $activeProjects.find(project => {return project.id === Number(projectID)});
-    if(!clickedProject) return;
-    let activeSession : Session | null = getActiveSession();
+  
+  function handleProjectClick(active: boolean, id : number, target: number) {
 
-    // If there are no active sessions, start a new session.
-    if(!activeSession) return DB_startSession(clickedProject!.id, clickedProject!.target).then(() => refreshPageData());
+    if(active) {
+      DB_completeSession(id).then(() => refreshPageData());
+    } else {
+      DB_startSession(id, target).then(() => refreshPageData());
+    }
+    
+    // for(let session of activeSessions) {
 
-    // Else if the selected project was active, stop the session.
-    if(activeSession.project_id === clickedProject!.id) return DB_completeSession().then(() => refreshPageData());
+    //   // If the project has an active session, stop that session
+    //   if(session.project_id == id) {
+    //   }
+    // }
 
-    // Else, stop the session then start a new session.
-    return DB_startSession(clickedProject!.id, clickedProject!.target).then(() => refreshPageData());
+    
+    // DB_startSession(id, target).then(() => refreshPageData());
+
+    // // If there are no active sessions, start a new session.
+    // if(!activeSession) return DB_startSession(clickedProject!.id, clickedProject!.target).then(() => refreshPageData());
+
+    // // Else if the selected project was active, stop the session.
+    // if(activeSession.project_id === clickedProject!.id) return DB_completeSession().then(() => refreshPageData());
+
+    // // Else, stop the session then start a new session.
+    // return DB_startSession(clickedProject!.id, clickedProject!.target).then(() => refreshPageData());
   }
 
   function getActiveSession() : Session | null {
@@ -58,20 +69,22 @@
 * {
   color: #fff;
 }
-
 .project {
-  flex: 1;
   text-align: center;
-  line-height: 40px;
+  line-height: 28pt;
   padding: 0;
   font-family: "poppinsregular";
   font-size: 14pt;
   border-radius:10px;
   color: var(--color);
-  border: 2px solid var(--color);
-  margin: 10px 0;
-  background: none;
+  background: #1e1e1e;
+  margin: 6px 0;
   transition: all 200ms ease;
+  box-shadow: 1px 1px 3px #000;
+}
+
+.project:first-child {
+  margin: 0;
 }
 
 .active {
@@ -79,13 +92,43 @@
   color: #121212;
 }
 
+:global(#page) {
+  height: calc(100vh - 60px);
+  max-height: calc(100vh - 60px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#timer-container {
+  box-shadow: 0px 2px 10px 6px #121212;
+  z-index:1;
+  position: relative;
+}
+
+#projects-container {
+  padding-top: 12px;
+  flex: 1;
+  overflow: scroll;
+  padding-bottom: 12px;
+}
+
+:global(#page:after) {
+  content: "";
+  box-shadow: 0px 0px 10px 6px #000;
+  width: 100%;
+  height: 1px;
+}
+
 </style>
-<Timer {dailySessions} on:updateSessions{refreshPageData}/>
+<div id="timer-container">
+  <Timer {dailySessions} on:updateSessions={refreshPageData}/>
+</div>
 <!-- svelte-ignore a11y-click-events-have-key-events -->
+<div id="projects-container">
 {#each $activeProjects as project (project.id)} 
-  <div class="project {project.active? "active" : ""}" style="--color: #{project.color}" id="p{project.id}" data-id={project.id} on:click={(e) => {handleProjectClick(e.target)}}>{project.name}</div>
+  <div class="project {project.active? "active" : ""}" style="--color: #{project.color}" id="p{project.id}" data-id={project.id} on:click={(e) => {handleProjectClick(project.active, project.id, project.target)}}>{project.name}</div>
 {/each}
 
-{#if $activeProjects.length == 0}
-  <div id="finger"/>
-{/if}
+</div>

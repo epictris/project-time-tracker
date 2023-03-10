@@ -79,9 +79,25 @@
     // @ts-ignore
     .y(d => yScale(cumulative ? d.cumulative : d.duration))
     .curve(curveLinear)
+
+    // if(data.length == 1 && data[0].data.length == 1) {
+    //   const newPath = "M0," + (graphHeight - edgeBuffer) + " L" + graphWidth/2 + ",0 L" + (graphWidth - edgeBuffer) + "," + (graphHeight - edgeBuffer)
+    //   let newPoints = newPath.replaceAll("L", " ").slice(1).split(" ").map((n: string) => {let values = n.split(","); return [Number(values[0]), Number(values[1])]})
+    //   points[data[0].id] = {locations: newPoints, data: data[0].data};
+    //   paths[data[0].id] = newPath;
+    //   return;
+    // }
+
     for(let project of data) {
-        if(!project.visible) continue;
-      // paths[project.id] = pathLine(project.data)
+      if(!project.visible) continue;
+
+      if(project.data.length == 1) {
+        const newPath = pathLine(project.data)!
+        let height = newPath.replaceAll("M", "").replaceAll("Z", "").split(",")[1]
+        points[project.id] = {locations: [[graphWidth/2, height]], data: project.data};
+        paths[project.id] = "M" + edgeBuffer + "," + height + "L" + (graphWidth - edgeBuffer) + "," + height
+        continue;
+      }
       const newPath = pathLine(project.data)!
       let newPoints = newPath.replaceAll("L", " ").slice(1).split(" ").map((n: string) => {let values = n.split(","); return [Number(values[0]), Number(values[1])]})
       points[project.id] = {locations: newPoints, data: project.data};
@@ -115,6 +131,11 @@
       if(selectedPoint == newSelectedPoint) return;
       selectedPoint = newSelectedPoint;
       let dateLineX = left + 4.5 + (selectedPoint / (numberOfPoints-1)) * (width * 0.92)
+
+      if($data[0].data.length == 1) {
+        dateLineX = left + 4.5 + (width * 0.92)/2
+      }
+
       let toolTipWidth = 100
       let toolTipX = dateLineX - toolTipWidth - toolTipOffset;
       if(toolTipX < 0) {
@@ -167,7 +188,7 @@
           <!-- <path stroke-linecap="round" fill="url(#gradient{project.id})" in:draw="{{duration: 800}}" style="--color: #{project.color}" d="{paths[project.id]}" /> -->
           {/if}
           <path stroke-linecap="round" stroke="none" fill="none" in:draw="{{duration: 800}}" style="--color: #{project.color}" d={paths[project.id]} out:draw|local="{{duration: 400, easing: quintOut}}"/>
-          <path stroke-linecap="round" fill="url(#gradient{project.id})" in:fade="{{delay: 600, duration: 200}}" out:fade|local="{{duration: 150}}" d="{paths[project.id]},{graphWidth - edgeBuffer},{graphHeight - edgeBuffer}Z" />
+          <path stroke-linecap="round" fill="url(#gradient{project.id})" in:fade="{{delay: 600, duration: 200}}" out:fade|local="{{duration: 150}}" d="{paths[project.id]},{graphWidth - edgeBuffer},{graphHeight - edgeBuffer},{edgeBuffer},{graphHeight - edgeBuffer}Z" />
           
           {#if selectedPoint != null && selectedPoint < project.data.length}
             <circle style="transition: 200ms all" cx={points[project.id].locations[selectedPoint][0]} cy={points[project.id].locations[selectedPoint][1]} r="2" fill="#{project.color}"/>
@@ -196,9 +217,9 @@
             <span class="number">{getHours(cumulative ? data.cumulative : data.duration)}</span><span class="unit">h</span>
           {/if}
           {#if showMinutes(cumulative ? data.cumulative : data.duration)}
-            <span class="number">{getMinutes(data.duration)}</span><span class="unit">m</span>
+            <span class="number">{getMinutes(cumulative ? data.cumulative : data.duration)}</span><span class="unit">m</span>
           {/if}
-          {#if showSeconds(cumulative ? data.cumulative : data.duration) || (cumulative ? data.cumulative : data.duration) < 1000}
+          {#if showSeconds(cumulative ? data.cumulative : data.duration)}
             <span class="number">{getSeconds(cumulative ? data.cumulative : data.duration)}</span><span class="unit">s</span>
           {/if}
         </p>
